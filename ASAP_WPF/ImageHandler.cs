@@ -16,7 +16,7 @@ using Point = System.Drawing.Point;
 
 namespace ASAP_WPF
 {
-    class Models
+    internal class ImageHandler
     {
         private string FolderName { get; set; }
         private string ImgName { get; set; }
@@ -31,14 +31,14 @@ namespace ASAP_WPF
         //sginals? https://softwareengineering.stackexchange.com/questions/142458/any-practical-alternative-to-the-signals-slots-model-for-gui-programming
         //threadpool System.Threading.ThreadPool;
 
-        private ImageProcessor ImgProcessor { get; set; } //auto delete?? signalos baszás itt is
+        public ImageProcessor ImgProcessor { get; set; } //auto delete?? signalos baszás itt is
 
         public override string ToString()
         {
             return "ImageHandler, opened img:" + this.ImgName;
         }
 
-        public Models()
+        public ImageHandler()
         {
             FolderName = null;
             ImgName = null;
@@ -50,6 +50,21 @@ namespace ASAP_WPF
             CountourImage = null;
             AdaptiveThresholdConstant = 5;
             ImgProcessor = new ImageProcessor();
+        }
+
+        public ImageHandler(String _path)
+        {
+            FolderName = null;
+            ImgName = null;
+            Files = new List<string>();
+            OpenedImgNumber = 0;
+            Image = null;
+            ProcessedImage = null;
+            Contours = new List<VectorOfVectorOfPoint>();
+            CountourImage = null;
+            AdaptiveThresholdConstant = 5;
+            ImgProcessor = new ImageProcessor();
+            this.UpdateFolder(_path);
         }
 
         public void UpdateImage()

@@ -10,7 +10,7 @@ using Emgu.CV.Util;
 
 namespace ASAP_WPF
 {
-    class ImageProcessor :BaseThread
+    internal class ImageProcessor :BaseThread
     {
         public ImageProcessor()
             : base()
@@ -65,11 +65,9 @@ namespace ASAP_WPF
             for (var idx = 0; idx < dims ; idx++)
             {
                 var con = contours[idx];
-                if (CvInvoke.ContourArea(con) < 800)
-                {
-                    MCvScalar color = new MCvScalar(0,0,0);
-                    CvInvoke.FillPoly(this.ImageMat, con, color);
-                }
+                if (!(CvInvoke.ContourArea(con) < 800)) continue;
+                var color = new MCvScalar(0,0,0);
+                CvInvoke.FillPoly(this.ImageMat, con, color);
             }
             //Open then close to close gaps
             var kernelMat1 = CvInvoke.GetStructuringElement(Emgu.CV.CvEnum.ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
@@ -96,7 +94,7 @@ namespace ASAP_WPF
             //Empty out objects contours
             var contourToReturn = new VectorOfVectorOfPoint();
             //Image to be overlayed, with alpha values
-            Mat contourImage = new Mat(this.ImageMat.Rows,this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U,4);
+            var contourImage = new Mat(this.ImageMat.Rows,this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U,4);
 
             dims = contours.Size;
             for (var idx = 0; idx < dims; idx++)

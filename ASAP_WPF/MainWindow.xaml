@@ -8,15 +8,19 @@
         Title="ASAP WPF" Height="768" Width="1366">
     <Grid>
         <Menu DockPanel.Dock="Top">
-        <MenuItem Header="_File" Click="MenuItem_Click">
-            <MenuItem Header="_New" />
-            <MenuItem Header="_Settings" />
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open Folder" Click="OpenFolderClick"/>
+                <MenuItem Header="_Settings" />
                 <Separator />
-            <MenuItem Header="_Exit" />
-        </MenuItem>
-            <MenuItem Header="_View" Click="MenuItem_Click">
+                <MenuItem Header="_Exit" />
+            </MenuItem>
+
+            <MenuItem Header="_View">
                 <MenuItem Header="_Lengths" IsCheckable="True" IsChecked="True"/>
             </MenuItem>
+            <TextBlock Text="Current folder: " TextWrapping="Wrap"/>
+            <TextBox x:Name="textBoxFolderPath" Text="" TextWrapping="Wrap" Width="1170"/>
+            <MenuItem x:Name="ProcessButton"  Header="_Start" Click="MenuItem_Click"/>
         </Menu>
 
     </Grid>
