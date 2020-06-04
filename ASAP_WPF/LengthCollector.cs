@@ -13,10 +13,23 @@ namespace ASAP_WPF
     {
         Dictionary<int, (double, PointF)> lengthDictionary = new Dictionary<int, (double, PointF)>();
 
+        public bool ContainsKey(int _imgNumber)
+        {
+            return lengthDictionary.ContainsKey(_imgNumber);
+        }
+
         public void Add(int _imgNumber, double _length, PointF _point)
         {
             var tempTuple = (_length, _point);
             this.lengthDictionary.Add(_imgNumber, tempTuple);
+        }
+
+        public void Add(int _imgNumber, List<(double, PointF)> _list)
+        {
+            foreach (var pair in _list)
+            {
+                this.lengthDictionary.Add(_imgNumber,pair);
+            }
         }
 
         public Dictionary<int, (double, PointF)> GetLengthTuples(double _pixelPerMicroMeter)
@@ -35,6 +48,12 @@ namespace ASAP_WPF
         {
             return lengthDictionary.Select(dictItem =>
                 (dictItem.Key, dictItem.Value.Item1, dictItem.Value.Item1 / _pixelPerMicroMeter)).ToList();
+        }
+
+        public List<(int, double, double)> GetLengthList(int _imgNumnber,double _pixelPerMicroMeter)
+        {
+            return lengthDictionary.Select(dictItem =>
+                (dictItem.Key, dictItem.Value.Item1, dictItem.Value.Item1 / _pixelPerMicroMeter)).Where(dictItem => dictItem.Key == _imgNumnber).ToList();
         }
 
         public PointF GetPositionbyNumber(int _imgNumber)

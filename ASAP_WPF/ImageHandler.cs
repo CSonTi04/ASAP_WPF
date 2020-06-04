@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text;
 using Emgu.CV;
 using Emgu.CV.Util;
-using Microsoft.VisualBasic.CompilerServices;
 using System.Threading;
 using System.Windows;
 using Emgu.CV.Structure;
@@ -18,14 +17,14 @@ namespace ASAP_WPF
 {
     internal class ImageHandler
     {
-        private string FolderName { get; set; }
-        private string ImgName { get; set; }
-        private List<String> Files { get; set; } //paths for the time being
-        private int OpenedImgNumber { get; set; }
-        private Mat Image { get; set; }
-        private Mat ProcessedImage { get; set; }
-        private List<VectorOfVectorOfPoint> Contours { get; set; }
-        private Mat CountourImage { get; set; }
+        public string FolderName { get; set; }
+        public string ImgName { get; set; }
+        public List<string> Files { get; set; } //paths for the time being
+        public int OpenedImgNumber { get; set; }
+        public Mat Image { get; set; }
+        public Mat ProcessedImage { get; set; }
+        public VectorOfVectorOfPoint Contours { get; set; }
+        public Mat CountourImage { get; set; }
 
         private int AdaptiveThresholdConstant { get; set; }
         //sginals? https://softwareengineering.stackexchange.com/questions/142458/any-practical-alternative-to-the-signals-slots-model-for-gui-programming
@@ -46,7 +45,7 @@ namespace ASAP_WPF
             OpenedImgNumber = 0;
             Image = null;
             ProcessedImage = null;
-            Contours = new List<VectorOfVectorOfPoint>();
+            Contours = new VectorOfVectorOfPoint();
             CountourImage = null;
             AdaptiveThresholdConstant = 5;
             ImgProcessor = new ImageProcessor();
@@ -60,7 +59,7 @@ namespace ASAP_WPF
             OpenedImgNumber = 0;
             Image = null;
             ProcessedImage = null;
-            Contours = new List<VectorOfVectorOfPoint>();
+            Contours = new VectorOfVectorOfPoint();
             CountourImage = null;
             AdaptiveThresholdConstant = 5;
             ImgProcessor = new ImageProcessor();
@@ -81,12 +80,25 @@ namespace ASAP_WPF
         public void ProcessProcessedThread(List<object> _returnedList)
         {
             this.ProcessedImage = (Mat) _returnedList[0];
-            this.Contours = (List<VectorOfVectorOfPoint>) _returnedList[1];
+            this.Contours = (VectorOfVectorOfPoint) _returnedList[1];
             this.CountourImage = (Mat) _returnedList[2];
 
             //this.loading = False
             //this.signals.image_processing_change.emit(False)
         }
+
+        //saját
+        public void Process()
+        {
+            this.ProcessedImage = null;
+            this.CountourImage = null;
+            this.Contours.Clear();
+            ImgProcessor.Process();
+            this.ProcessedImage = ImgProcessor.ImageMat;
+            this.CountourImage = ImgProcessor.ImageMat;
+            this.Contours.Push(ImgProcessor.ContoursToReturn);
+        }
+
 
         public void UpdateFolder(String _path)
         {
@@ -97,7 +109,7 @@ namespace ASAP_WPF
             }
 
             this.FolderName = _path;
-            this.Files = new List<string>(Directory.GetFiles(_path)).OrderBy(q => q).ToList();
+            this.Files = new List<string>(Directory.GetFiles(_path, "*.jpg")).OrderBy(q => q).ToList();
             this.OpenedImgNumber = 0;
             this.UpdateImage();
         }
@@ -105,7 +117,7 @@ namespace ASAP_WPF
         public void NextImage()
         {
             //if is loading return??? ezekre tényleg meg kell nézni a dolgokat
-            if (this.OpenedImgNumber + 1 > this.Files.Count)
+            if (this.OpenedImgNumber + 1 < this.Files.Count)
             {
                 this.OpenedImgNumber++;
             }
@@ -149,15 +161,30 @@ namespace ASAP_WPF
         }
 
         public void DrawCellCountours(PointF _point)
-        {
-            foreach (var tempRect in from contour in Contours
-                where CvInvoke.PointPolygonTest(contour, _point, true) >= 0
-                select CvInvoke.MinAreaRect(contour))
+         {
+            foreach (var contour in Contours.ToArrayOfArray())
             {
-                PointF[] box = CvInvoke.BoxPoints(tempRect);
-                VectorOfPointF boxVec = new VectorOfPointF(box);
+                var tempVector = new VectorOfPoint(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)) continue;
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var box = CvInvoke.BoxPoints(tempRect);
+                var boxVec = new VectorOfPointF(box);
                 CvInvoke.PutText(CountourImage, tempRect.Size.Height.ToString(),
-                    new System.Drawing.Point((int) (10 + box[0].X), (int) (10 + box[0].Y)),
+                    new System.Drawing.Point((int)(10 + box[0].X), (int)(10 + box[0].Y)),
+                    Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
+            }
+        }
+
+        public void DrawAllCellCountours()
+        {
+            foreach (var contour in Contours.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPoint(contour);
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var box = CvInvoke.BoxPoints(tempRect);
+                var boxVec = new VectorOfPointF(box);
+                CvInvoke.PutText(CountourImage, tempRect.Size.Height.ToString(),
+                    new System.Drawing.Point((int)(10 + boxVec[0].X), (int)(10 + boxVec[0].Y)),
                     Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
             }
         }
@@ -165,38 +192,48 @@ namespace ASAP_WPF
         //Returns the length of a cell around a point
         public double GetCellLength(PointF _point)
         {
-            foreach (var tempRect in from contour in Contours
-                where CvInvoke.PointPolygonTest(contour, _point, true) >= 0
-                select CvInvoke.MinAreaRect(contour))
+            foreach (var contour in Contours.ToArrayOfArray())
             {
-                //ezek valszeg nem kellenek ide
-                //PointF[] box = CvInvoke.BoxPoints(tempRect);
-                //VectorOfPointF boxVec = new VectorOfPointF(box);
+                var tempVector = new VectorOfPoint(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)) continue;
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var box = CvInvoke.BoxPoints(tempRect);
                 return tempRect.Size.Height;
             }
-
             return -1.0;
         }
 
+        public List<double> GetAllCellLength()
+        {
+            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector select CvInvoke.MinAreaRect(tempVector) into tempRect select tempRect.Size.Height).Select(dummy => (double) dummy).ToList();
+        }
+
+        public List<(double, PointF)> GetAllCellLengthWithCenterPoint()
+        {
+            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int) cx, (int) cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempRect.Size.Height, tempPoint)).Select(dummy => ((double, PointF)) dummy).ToList();
+        }
+
+
         public void SaveImgWithCountours(PointF _point)
         {
-            Mat ImgToSave = this.Image;
-            foreach (var contour in Contours)
+            var ImgToSave = this.Image;
+            foreach (var contour in Contours.ToArrayOfArray())
             {
-                CvInvoke.DrawContours(ImgToSave, contour, 0, new MCvScalar(0, 255, 0), 2);
-                RotatedRect tempRect = CvInvoke.MinAreaRect(contour);
-                PointF[] box = CvInvoke.BoxPoints(tempRect);
-                VectorOfPointF boxVec = new VectorOfPointF(box);
+                var tempVector = new VectorOfPoint(contour);
+                CvInvoke.DrawContours(ImgToSave, tempVector, 0, new MCvScalar(0, 255, 0), 2);
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var box = CvInvoke.BoxPoints(tempRect);
+                var boxVec = new VectorOfPointF(box);
                 CvInvoke.DrawContours(ImgToSave, boxVec, 0, new MCvScalar(0, 0, 255), 2);
-                if (CvInvoke.PointPolygonTest(contour, _point, true) >= 0)
+                if (CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)
                 {
                     CvInvoke.PutText(CountourImage, tempRect.Size.Height.ToString(),
-                        new System.Drawing.Point((int) (10 + box[0].X), (int) (10 + box[0].Y)),
+                        new System.Drawing.Point((int) (10 + boxVec[0].X), (int) (10 + boxVec[0].Y)),
                         Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
                 }
             }
 
-            String processedDir = this.FolderName + Path.DirectorySeparatorChar + "processed";
+            var processedDir = this.FolderName + Path.DirectorySeparatorChar + "processed";
             if (!Directory.Exists(processedDir))
             {
                 Directory.CreateDirectory(processedDir);
@@ -205,16 +242,17 @@ namespace ASAP_WPF
             CvInvoke.Imwrite(processedDir + Path.DirectorySeparatorChar + this.OpenedImgNumber + ".jpg", ImgToSave);
         }
 
-        public Point ContourCenter(PointF _point)
+        public PointF ContourCenter(PointF _point)
         {
-            Point temp = new Point();
-            foreach (var contour in Contours)
+            PointF temp = new PointF();
+            foreach (var contour in Contours.ToArrayOfArray())
             {
-                if (!(CvInvoke.PointPolygonTest(contour, _point, true) >= 0)) continue;
-                var moment = CvInvoke.Moments(contour);
+                var tempVector = new VectorOfPoint(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)) continue;
+                var moment = CvInvoke.Moments(tempVector);
                 var cx = moment.M10 / moment.M00;
                 var cy = moment.M01 / moment.M00;
-                temp = new Point((int) cx, (int) cy);
+                temp = new PointF((int) cx, (int) cy);
                 break;
             }
 
