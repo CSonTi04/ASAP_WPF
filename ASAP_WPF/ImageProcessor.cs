@@ -131,10 +131,16 @@ namespace ASAP_WPF
                     VectorOfVectorOfPoint boxVec = new VectorOfVectorOfPoint(con);
                     //az jókérdés, hogy ez most a megfelelő alak-e vagy sem
                     CvInvoke.DrawContours(ContourImageMat, boxVec, 0, new MCvScalar(0, 255, 0, 255), 2);
+                    //TODO "több doboz megtalálálása"
+                    //TODO "Azzal még kezdeni valamit"
+                    //hossz tenfelyen köszéptől középig
+                    //köszépvonalon egy 10 px-es csíkkal végigmenni, és ahol "fekete", az alapján meg lehet a közepe
                 }
 
+                //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
                 CvInvoke.PutText(this.ImageMat, "{}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);
-
+                //Ez valyon mikor került ide?
+                //CvInvoke.EqualizeHist(this.ImageMat,this.ImageMat);
                 //itt kellene visszaadni a szálat!
             }
             catch (Exception e)

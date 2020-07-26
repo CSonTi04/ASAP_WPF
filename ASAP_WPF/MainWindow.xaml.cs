@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,6 +19,8 @@ using Path = System.IO.Path;
 using Emgu.CV.UI;
 using System.Windows.Forms;
 using CsvHelper.Configuration.Attributes;
+using KeyEventArgs = System.Windows.Forms.KeyEventArgs;
+using ListBox = System.Windows.Forms.ListBox;
 using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
 
 namespace ASAP_WPF
@@ -28,18 +32,29 @@ namespace ASAP_WPF
     {
 
         ImageHandler ImageHandler = new ImageHandler();
-        private Point LastClickedPoint { get; set; }
+        private System.Drawing.Point LastClickedPoint { get; set; }
         private LengthCollector LengthCollector { get; set; }
         private bool Switch { get; set; }
         private SettingsWindow SettingsWindow { get; set; }
+
+        private LengthWindow LengthWindow { get; set; }
+
+        //private List<(int, double, double)> TempLengthList { get; set; }
+        private List<LengthTriplet> TempLengthList { get; set; }
+
+        private static readonly Regex _regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
 
         public MainWindow()
         {
             InitializeComponent();
             LengthCollector = new LengthCollector();
             EmguImgBox.SizeMode = PictureBoxSizeMode.Zoom;
+            //hogy ne lehessen pan-elni és zoomolni
+            //EmguImgBox.FunctionalMode = Emgu.CV.UI.ImageBox.FunctionalModeOption.Minimum;
+            //EmguImgBox.VerticalScrollBar.KeyPress
             Switch = false;
             SettingsWindow = new SettingsWindow {Visibility = Visibility.Collapsed};
+            LengthWindow = new LengthWindow {Visibility = Visibility.Collapsed};
         }
 
         private void OpenFolderClick(object sender, RoutedEventArgs e)
@@ -49,7 +64,7 @@ namespace ASAP_WPF
 
         private void ImgBoxClick(object sender, EventArgs e)
         {
-            var me = (MouseEventArgs)e;
+            var me = (MouseEventArgs) e;
             var coordinates = me.Location;
             ImageHandler.Process();
             ImageHandler.DrawCellCountours(coordinates);
@@ -67,7 +82,7 @@ namespace ASAP_WPF
             }
             else
             {
-                ImageHandler.UpdateImage();
+                //ImageHandler.UpdateImage("EqualizeHist");
                 EmguImgBox.Image = ImageHandler.Image;
             }
 
@@ -95,12 +110,13 @@ namespace ASAP_WPF
                 ImageHandler.UpdateImage();
                 EmguImgBox.Image = ImageHandler.Image;
             }
+
             RegisterCellLengths();
         }
 
         private void OpenFolder()
         {
-            var folderDialog = new CommonOpenFileDialog { IsFolderPicker = true };
+            var folderDialog = new CommonOpenFileDialog {IsFolderPicker = true};
             var folderResult = folderDialog.ShowDialog();
             if (folderResult != CommonFileDialogResult.Ok) return;
             textBoxFolderPath.Text = folderDialog.FileName;
@@ -117,7 +133,21 @@ namespace ASAP_WPF
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
+            ProcessCurrImg();
+        }
+
+        private void ProcessCurrImg()
+        {
+            var currImgNumber = ImageHandler.OpenedImgNumber;
             if (textBoxFolderPath.Text.Length <= 0) return;
+            ImageHandler.Process();
+            LengthCollector.Add(currImgNumber, ImageHandler.GetAllCellLengthWithCenterPoint());
+            //TempLengthList = LengthCollector.GetLengthList(currImgNumber, SettingsWindow.PPM_Sl.Value);
+            TempLengthList = LengthCollector.GetLengthTripletList(currImgNumber, SettingsWindow.PPM_Sl.Value);
+            LengthWindow.LengthGrid.ItemsSource = TempLengthList;
+            LengthWindow.LengthGrid.Items.Refresh();
+
+            /*
             foreach (var VARIABLE in ImageHandler.Files)
             {
                 ImageHandler.NextImage();
@@ -125,386 +155,495 @@ namespace ASAP_WPF
                 //ImageHandler.SaveImgWithCountours();
                 //ImageHandler.ImgProcessor.ExportImg(Path.Combine(textBoxFolderPath.Text, ImageHandler.OpenedImgNumber + "_export.jpg"));
             }
+            */
         }
 
         private void LengthClick(object sender, RoutedEventArgs e)
         {
+            LengthWindow.Show();
+            /*
             this.LengthMenuItem.IsChecked = !this.LengthMenuItem.IsChecked;
             if (this.LengthMenuItem.IsChecked)
             {
                 LengthGrid.DataContext =
-                    LengthCollector.GetLengthList(ImageHandler.OpenedImgNumber, Convert.ToDouble(SettingsWindow.SlValue));
+                    LengthCollector.GetLengthList(ImageHandler.OpenedImgNumber, Convert.ToDouble(SettingsWindow.PPM_Sl));
             }
+            */
         }
 
         private void Window_OnKey(object sender, System.Windows.Input.KeyEventArgs e)
         {
             switch (e.Key)
             {
-                case Key.Right:
-                    ImageHandler.NextImage();
-                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    EmguImgBox.Image = ImageHandler.Image;
-                    //ImageHandler.Process();
-                    //EmguImgBox.Image = ImageHandler.ProcessedImage;
-                    break;
-                case Key.Left:
-                    ImageHandler.PreviousImage();
-                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    EmguImgBox.Image = ImageHandler.Image;
-                    //ImageHandler.Process();
-                    //EmguImgBox.Image = ImageHandler.ProcessedImage;
-                    break;
-                case Key.None:
-                    break;
-                case Key.Cancel:
-                    break;
-                case Key.Back:
-                    break;
-                case Key.Tab:
-                    break;
-                case Key.LineFeed:
-                    break;
-                case Key.Clear:
-                    break;
+
                 case Key.Return:
                     DrawContours();
-                    break;
-                case Key.Pause:
-                    break;
-                case Key.Capital:
-                    break;
-                case Key.KanaMode:
-                    break;
-                case Key.JunjaMode:
-                    break;
-                case Key.FinalMode:
-                    break;
-                case Key.HanjaMode:
-                    break;
-                case Key.Escape:
-                    break;
-                case Key.ImeConvert:
-                    break;
-                case Key.ImeNonConvert:
-                    break;
-                case Key.ImeAccept:
-                    break;
-                case Key.ImeModeChange:
                     break;
                 case Key.Space:
                     SwitchImg();
                     break;
                 case Key.Prior:
+                    ImageHandler.NextImage();
+                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+                    EmguImgBox.Image = ImageHandler.Image;
+                    //ImageHandler.Process();
+                    //EmguImgBox.Image = ImageHandler.ProcessedImage;
+                    Print("WPF");
                     break;
                 case Key.Next:
-                    break;
-                case Key.End:
-                    break;
-                case Key.Home:
-                    break;
-                case Key.Up:
-                    break;
-                case Key.Down:
-                    break;
-                case Key.Select:
-                    break;
-                case Key.Print:
-                    break;
-                case Key.Execute:
-                    break;
-                case Key.Snapshot:
-                    break;
-                case Key.Insert:
-                    break;
-                case Key.Delete:
-                    break;
-                case Key.Help:
-                    break;
-                case Key.D0:
-                    break;
-                case Key.D1:
-                    break;
-                case Key.D2:
-                    break;
-                case Key.D3:
-                    break;
-                case Key.D4:
-                    break;
-                case Key.D5:
-                    break;
-                case Key.D6:
-                    break;
-                case Key.D7:
-                    break;
-                case Key.D8:
-                    break;
-                case Key.D9:
-                    break;
-                case Key.A:
-                    break;
-                case Key.B:
+                    ImageHandler.PreviousImage();
+                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+                    EmguImgBox.Image = ImageHandler.Image;
+                    //ImageHandler.Process();
+                    //EmguImgBox.Image = ImageHandler.ProcessedImage;Print("Winform");
+                    Print("WPF");
                     break;
                 case Key.C:
-                    break;
-                case Key.D:
+                    ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.Clahe.ToString());
+                    EmguImgBox.Image = ImageHandler.Image;
                     break;
                 case Key.E:
-                    break;
-                case Key.F:
-                    break;
-                case Key.G:
-                    break;
-                case Key.H:
-                    break;
-                case Key.I:
-                    break;
-                case Key.J:
-                    break;
-                case Key.K:
-                    break;
-                case Key.L:
-                    break;
-                case Key.M:
-                    break;
-                case Key.N:
+                    ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.EqualizeHist.ToString());
+                    EmguImgBox.Image = ImageHandler.Image;
                     break;
                 case Key.O:
                     OpenFolder();
                     break;
                 case Key.P:
+                    ProcessCurrImg();
                     break;
-                case Key.Q:
+                default:
+                    return;
+            }
+        }
+
+        private void Window_OnKey(object sender, KeyEventArgs e)
+        {
+            //A winform dolog miatt kell ez :|
+            KeyDataSwitch(e.KeyData);
+        }
+
+        private void KeyDataSwitch(Keys e)
+        {
+            switch (e)
+            {
+                case Keys.Right:
                     break;
-                case Key.R:
+                case Keys.Left:
                     break;
-                case Key.S:
+                case Keys.KeyCode:
                     break;
-                case Key.T:
+                case Keys.Modifiers:
                     break;
-                case Key.U:
+                case Keys.None:
                     break;
-                case Key.V:
+                case Keys.LButton:
                     break;
-                case Key.W:
+                case Keys.RButton:
                     break;
-                case Key.X:
+                case Keys.Cancel:
                     break;
-                case Key.Y:
+                case Keys.MButton:
                     break;
-                case Key.Z:
+                case Keys.XButton1:
                     break;
-                case Key.LWin:
+                case Keys.XButton2:
                     break;
-                case Key.RWin:
+                case Keys.Back:
                     break;
-                case Key.Apps:
+                case Keys.Tab:
                     break;
-                case Key.Sleep:
+                case Keys.LineFeed:
                     break;
-                case Key.NumPad0:
+                case Keys.Clear:
                     break;
-                case Key.NumPad1:
+                case Keys.Return:
                     break;
-                case Key.NumPad2:
+                case Keys.ShiftKey:
                     break;
-                case Key.NumPad3:
+                case Keys.ControlKey:
                     break;
-                case Key.NumPad4:
+                case Keys.Menu:
                     break;
-                case Key.NumPad5:
+                case Keys.Pause:
                     break;
-                case Key.NumPad6:
+                case Keys.Capital:
                     break;
-                case Key.NumPad7:
+                case Keys.KanaMode:
                     break;
-                case Key.NumPad8:
+                case Keys.JunjaMode:
                     break;
-                case Key.NumPad9:
+                case Keys.FinalMode:
                     break;
-                case Key.Multiply:
+                case Keys.HanjaMode:
                     break;
-                case Key.Add:
+                case Keys.Escape:
                     break;
-                case Key.Separator:
+                case Keys.IMEConvert:
                     break;
-                case Key.Subtract:
+                case Keys.IMENonconvert:
                     break;
-                case Key.Decimal:
+                case Keys.IMEAccept:
                     break;
-                case Key.Divide:
+                case Keys.IMEModeChange:
                     break;
-                case Key.F1:
+                case Keys.Space:
                     break;
-                case Key.F2:
+                case Keys.Prior:
+                    ImageHandler.PreviousImage();
+                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+                    EmguImgBox.Image = ImageHandler.Image;
+                    //ImageHandler.Process();
+                    //EmguImgBox.Image = ImageHandler.ProcessedImage;
+                    Print("Winform");
                     break;
-                case Key.F3:
+                case Keys.Next:
+                    ImageHandler.NextImage();
+                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+                    EmguImgBox.Image = ImageHandler.Image;
+                    //ImageHandler.Process();
+                    //EmguImgBox.Image = ImageHandler.ProcessedImage;
+                    Print("Winform");
                     break;
-                case Key.F4:
+                case Keys.End:
                     break;
-                case Key.F5:
+                case Keys.Home:
                     break;
-                case Key.F6:
+                case Keys.Up:
                     break;
-                case Key.F7:
+                case Keys.Down:
                     break;
-                case Key.F8:
+                case Keys.Select:
                     break;
-                case Key.F9:
+                case Keys.Print:
                     break;
-                case Key.F10:
+                case Keys.Execute:
                     break;
-                case Key.F11:
+                case Keys.Snapshot:
                     break;
-                case Key.F12:
+                case Keys.Insert:
                     break;
-                case Key.F13:
+                case Keys.Delete:
                     break;
-                case Key.F14:
+                case Keys.Help:
                     break;
-                case Key.F15:
+                case Keys.D0:
                     break;
-                case Key.F16:
+                case Keys.D1:
                     break;
-                case Key.F17:
+                case Keys.D2:
                     break;
-                case Key.F18:
+                case Keys.D3:
                     break;
-                case Key.F19:
+                case Keys.D4:
                     break;
-                case Key.F20:
+                case Keys.D5:
                     break;
-                case Key.F21:
+                case Keys.D6:
                     break;
-                case Key.F22:
+                case Keys.D7:
                     break;
-                case Key.F23:
+                case Keys.D8:
                     break;
-                case Key.F24:
+                case Keys.D9:
                     break;
-                case Key.NumLock:
+                case Keys.A:
                     break;
-                case Key.Scroll:
+                case Keys.B:
                     break;
-                case Key.LeftShift:
+                case Keys.C:
                     break;
-                case Key.RightShift:
+                case Keys.D:
                     break;
-                case Key.LeftCtrl:
+                case Keys.E:
                     break;
-                case Key.RightCtrl:
+                case Keys.F:
                     break;
-                case Key.LeftAlt:
+                case Keys.G:
                     break;
-                case Key.RightAlt:
+                case Keys.H:
                     break;
-                case Key.BrowserBack:
+                case Keys.I:
                     break;
-                case Key.BrowserForward:
+                case Keys.J:
                     break;
-                case Key.BrowserRefresh:
+                case Keys.K:
                     break;
-                case Key.BrowserStop:
+                case Keys.L:
                     break;
-                case Key.BrowserSearch:
+                case Keys.M:
                     break;
-                case Key.BrowserFavorites:
+                case Keys.N:
                     break;
-                case Key.BrowserHome:
+                case Keys.O:
                     break;
-                case Key.VolumeMute:
+                case Keys.P:
                     break;
-                case Key.VolumeDown:
+                case Keys.Q:
                     break;
-                case Key.VolumeUp:
+                case Keys.R:
                     break;
-                case Key.MediaNextTrack:
+                case Keys.S:
                     break;
-                case Key.MediaPreviousTrack:
+                case Keys.T:
                     break;
-                case Key.MediaStop:
+                case Keys.U:
                     break;
-                case Key.MediaPlayPause:
+                case Keys.V:
                     break;
-                case Key.LaunchMail:
+                case Keys.W:
                     break;
-                case Key.SelectMedia:
+                case Keys.X:
                     break;
-                case Key.LaunchApplication1:
+                case Keys.Y:
                     break;
-                case Key.LaunchApplication2:
+                case Keys.Z:
                     break;
-                case Key.Oem1:
+                case Keys.LWin:
                     break;
-                case Key.OemPlus:
+                case Keys.RWin:
                     break;
-                case Key.OemComma:
+                case Keys.Apps:
                     break;
-                case Key.OemMinus:
+                case Keys.Sleep:
                     break;
-                case Key.OemPeriod:
+                case Keys.NumPad0:
                     break;
-                case Key.Oem2:
+                case Keys.NumPad1:
                     break;
-                case Key.Oem3:
+                case Keys.NumPad2:
                     break;
-                case Key.AbntC1:
+                case Keys.NumPad3:
                     break;
-                case Key.AbntC2:
+                case Keys.NumPad4:
                     break;
-                case Key.Oem4:
+                case Keys.NumPad5:
                     break;
-                case Key.Oem5:
+                case Keys.NumPad6:
                     break;
-                case Key.Oem6:
+                case Keys.NumPad7:
                     break;
-                case Key.Oem7:
+                case Keys.NumPad8:
                     break;
-                case Key.Oem8:
+                case Keys.NumPad9:
                     break;
-                case Key.Oem102:
+                case Keys.Multiply:
                     break;
-                case Key.ImeProcessed:
+                case Keys.Add:
                     break;
-                case Key.System:
+                case Keys.Separator:
                     break;
-                case Key.OemAttn:
+                case Keys.Subtract:
                     break;
-                case Key.OemFinish:
+                case Keys.Decimal:
                     break;
-                case Key.OemCopy:
+                case Keys.Divide:
                     break;
-                case Key.OemAuto:
+                case Keys.F1:
                     break;
-                case Key.OemEnlw:
+                case Keys.F2:
                     break;
-                case Key.OemBackTab:
+                case Keys.F3:
                     break;
-                case Key.Attn:
+                case Keys.F4:
                     break;
-                case Key.CrSel:
+                case Keys.F5:
                     break;
-                case Key.ExSel:
+                case Keys.F6:
                     break;
-                case Key.EraseEof:
+                case Keys.F7:
                     break;
-                case Key.Play:
+                case Keys.F8:
                     break;
-                case Key.Zoom:
+                case Keys.F9:
                     break;
-                case Key.NoName:
+                case Keys.F10:
                     break;
-                case Key.Pa1:
+                case Keys.F11:
                     break;
-                case Key.OemClear:
+                case Keys.F12:
                     break;
-                case Key.DeadCharProcessed:
+                case Keys.F13:
+                    break;
+                case Keys.F14:
+                    break;
+                case Keys.F15:
+                    break;
+                case Keys.F16:
+                    break;
+                case Keys.F17:
+                    break;
+                case Keys.F18:
+                    break;
+                case Keys.F19:
+                    break;
+                case Keys.F20:
+                    break;
+                case Keys.F21:
+                    break;
+                case Keys.F22:
+                    break;
+                case Keys.F23:
+                    break;
+                case Keys.F24:
+                    break;
+                case Keys.NumLock:
+                    break;
+                case Keys.Scroll:
+                    break;
+                case Keys.LShiftKey:
+                    break;
+                case Keys.RShiftKey:
+                    break;
+                case Keys.LControlKey:
+                    break;
+                case Keys.RControlKey:
+                    break;
+                case Keys.LMenu:
+                    break;
+                case Keys.RMenu:
+                    break;
+                case Keys.BrowserBack:
+                    break;
+                case Keys.BrowserForward:
+                    break;
+                case Keys.BrowserRefresh:
+                    break;
+                case Keys.BrowserStop:
+                    break;
+                case Keys.BrowserSearch:
+                    break;
+                case Keys.BrowserFavorites:
+                    break;
+                case Keys.BrowserHome:
+                    break;
+                case Keys.VolumeMute:
+                    break;
+                case Keys.VolumeDown:
+                    break;
+                case Keys.VolumeUp:
+                    break;
+                case Keys.MediaNextTrack:
+                    break;
+                case Keys.MediaPreviousTrack:
+                    break;
+                case Keys.MediaStop:
+                    break;
+                case Keys.MediaPlayPause:
+                    break;
+                case Keys.LaunchMail:
+                    break;
+                case Keys.SelectMedia:
+                    break;
+                case Keys.LaunchApplication1:
+                    break;
+                case Keys.LaunchApplication2:
+                    break;
+                case Keys.OemSemicolon:
+                    break;
+                case Keys.Oemplus:
+                    break;
+                case Keys.Oemcomma:
+                    break;
+                case Keys.OemMinus:
+                    break;
+                case Keys.OemPeriod:
+                    break;
+                case Keys.OemQuestion:
+                    break;
+                case Keys.Oemtilde:
+                    break;
+                case Keys.OemOpenBrackets:
+                    break;
+                case Keys.OemPipe:
+                    break;
+                case Keys.OemCloseBrackets:
+                    break;
+                case Keys.OemQuotes:
+                    break;
+                case Keys.Oem8:
+                    break;
+                case Keys.OemBackslash:
+                    break;
+                case Keys.ProcessKey:
+                    break;
+                case Keys.Packet:
+                    break;
+                case Keys.Attn:
+                    break;
+                case Keys.Crsel:
+                    break;
+                case Keys.Exsel:
+                    break;
+                case Keys.EraseEof:
+                    break;
+                case Keys.Play:
+                    break;
+                case Keys.Zoom:
+                    break;
+                case Keys.NoName:
+                    break;
+                case Keys.Pa1:
+                    break;
+                case Keys.OemClear:
+                    break;
+                case Keys.Shift:
+                    break;
+                case Keys.Control:
+                    break;
+                case Keys.Alt:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
         }
 
+        private void Print(string text)
+        {
+            Console.Out.WriteLineAsync(text);
+        }
 
+        private void CurrIdx_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var tempText = CurrIdx.Text;
+            if (!IsTextAllowed(tempText)) return;
+            var idxToJumpTo = int.Parse(tempText);
+            ImageHandler.JumpToImage(idxToJumpTo);
+            CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+            EmguImgBox.Image = ImageHandler.Image;
+        }
+
+
+        private static bool IsTextAllowed(string text)
+        {
+            return !_regex.IsMatch(text);
+        }
+
+
+        private void Window_OnKey_Prev(object sender, PreviewKeyDownEventArgs e)
+        {
+            KeyDataSwitch(e.KeyData);
+        }
+
+        /*
+        private void MainWindow_OnPreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            e.Handled = true;
+        }
+        */
+        private void EmguImgBox_OnClick(object sender, MouseEventArgs e)
+        {
+            this.LastClickedPoint = e.Location;
+            this.ImageHandler.Process();
+            this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
+            /*
+             pos = evt[0]._scenePos
+        mousePoint = self.view_box.mapSceneToView(pos)
+        self.last_clicked_point = mousePoint
+        self.image_handler.draw_cells_contour((mousePoint.x(), mousePoint.y()))
+
+        self.update()
+             */
+        }
     }
 }

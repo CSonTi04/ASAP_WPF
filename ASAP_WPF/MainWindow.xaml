@@ -7,7 +7,8 @@
         xmlns:emui="clr-namespace:Emgu.CV.UI;assembly=Emgu.CV.UI"
         mc:Ignorable="d"
         Title="ASAP WPF" Height="768" Width="1366"
-        KeyDown="Window_OnKey">
+        KeyDown="Window_OnKey" >
+    <!--  PreviewLostKeyboardFocus="MainWindow_OnPreviewLostKeyboardFocus" -->
     <Grid>
 
 
@@ -16,8 +17,8 @@
                     <MenuItem Header="_File">
                         <MenuItem Header="_Open Folder" Click="OpenFolderClick"/>
                         <MenuItem Header="_Settings" Click="ShowSettingsWindow"/>
-                        <Separator />
-                        <MenuItem Header="_Exit" />
+                    <Separator />
+                    <MenuItem Header="_Exit" />
                     </MenuItem>
 
                     <MenuItem Header="_View">
@@ -26,14 +27,12 @@
                     <TextBlock Text="Current folder: " TextWrapping="Wrap"/>
                     <TextBox x:Name="textBoxFolderPath" Text="" TextWrapping="Wrap" Width="925"/>
                 <TextBlock TextWrapping="Wrap" Text="Pic"/>
-                <TextBlock x:Name="CurrIdx" TextWrapping="Wrap" Text="" Width="25"/>
+                <TextBox x:Name="CurrIdx" TextWrapping="Wrap" Text="" Width="35" TextChanged="CurrIdx_TextChanged"/>
                 <TextBlock TextWrapping="Wrap" Text="of"/>
                 <TextBlock x:Name="NumOfPics" TextWrapping="Wrap" Text="" Width="25"/>
             </Menu>
-            <DataGrid Name="LengthGrid"  DockPanel.Dock="Right"/>
-
-            <WindowsFormsHost>
-                <emui:ImageBox x:Name="EmguImgBox"/>
+                <WindowsFormsHost>
+                <emui:ImageBox x:Name="EmguImgBox" PreviewKeyDown="Window_OnKey_Prev" MouseDoubleClick="EmguImgBox_OnClick"/>
             </WindowsFormsHost>
             </DockPanel>
 

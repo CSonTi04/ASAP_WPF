@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections;
+﻿using Emgu.CV;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
-using Emgu.CV;
-using Emgu.CV.Util;
-using System.Threading;
-using System.Windows;
-using Emgu.CV.Structure;
-using Point = System.Drawing.Point;
 
 namespace ASAP_WPF
 {
@@ -26,11 +20,17 @@ namespace ASAP_WPF
         public VectorOfVectorOfPoint Contours { get; set; }
         public Mat CountourImage { get; set; }
 
+        public enum ModTypeEnum
+        {
+            Clahe,
+            EqualizeHist
+        }
+
         private int AdaptiveThresholdConstant { get; set; }
         //sginals? https://softwareengineering.stackexchange.com/questions/142458/any-practical-alternative-to-the-signals-slots-model-for-gui-programming
         //threadpool System.Threading.ThreadPool;
 
-        public ImageProcessor ImgProcessor { get; set; } //auto delete?? signalos baszás itt is
+        public ImageProcessor ImgProcessor { get; set; } //auto delete?? signalos  itt is
 
         public override string ToString()
         {
@@ -71,10 +71,30 @@ namespace ASAP_WPF
             if (this.Files.Count <= 0 || this.OpenedImgNumber < 0) return;
             this.ImgName = this.Files[OpenedImgNumber];
             //itt lehetne kísérletezni, hogy egyből két árnyalatos szürkével menjen, vagy a hisztogram generáláshoz több árnyalatos legyen
+            //tényleg meg kellene nézni, hogy ennek van -e effektje a kimenetelre
             this.Image = CvInvoke.Imread(this.ImgName, Emgu.CV.CvEnum.ImreadModes.ReducedGrayscale8);
             this.ImgProcessor.SetValues(this.Image, this.AdaptiveThresholdConstant);
             //this.isloading == ture???? ez valami signalos lehet
             //this.signals.image_provcessing_change.emit(True)
+        }
+
+        public void UpdateImage(string modType)
+        {
+            if (this.Files.Count <= 0 || this.OpenedImgNumber < 0) return;
+            if (modType.Equals("EqualizeHist"))
+            {
+                this.ImgName = this.Files[OpenedImgNumber];
+                this.Image = CvInvoke.Imread(this.ImgName, Emgu.CV.CvEnum.ImreadModes.ReducedGrayscale8);
+                CvInvoke.EqualizeHist(this.Image, this.Image);
+                this.ImgProcessor.SetValues(this.Image, this.AdaptiveThresholdConstant);
+            }
+            else if (modType.Equals("Clahe"))
+            {
+                this.ImgName = this.Files[OpenedImgNumber];
+                this.Image = CvInvoke.Imread(this.ImgName, Emgu.CV.CvEnum.ImreadModes.ReducedGrayscale8);
+                CvInvoke.CLAHE(this.Image,20.0,new Size(8,8),this.Image);
+                this.ImgProcessor.SetValues(this.Image, this.AdaptiveThresholdConstant);
+            }
         }
 
         public void ProcessProcessedThread(List<object> _returnedList)
@@ -111,7 +131,7 @@ namespace ASAP_WPF
             this.FolderName = _path;
             this.Files = new List<string>(Directory.GetFiles(_path, "*.jpg")).OrderBy(q => q).ToList();
             this.OpenedImgNumber = 0;
-            this.UpdateImage();
+            this.UpdateImage("");
         }
 
         public void NextImage()
@@ -208,9 +228,10 @@ namespace ASAP_WPF
             return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector select CvInvoke.MinAreaRect(tempVector) into tempRect select tempRect.Size.Height).Select(dummy => (double) dummy).ToList();
         }
 
-        public List<(double, PointF)> GetAllCellLengthWithCenterPoint()
+        public List<(PointF, double)> GetAllCellLengthWithCenterPoint()
         {
-            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int) cx, (int) cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempRect.Size.Height, tempPoint)).Select(dummy => ((double, PointF)) dummy).ToList();
+            //return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int) cx, (int) cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempRect.Size.Height, tempPoint)).Select(dummy => ((double, PointF)) dummy).ToList();
+            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int)cx, (int)cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempPoint, tempRect.Size.Height)).Select(dummy => ((PointF,double))dummy).ToList();
         }
 
 
