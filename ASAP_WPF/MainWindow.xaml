@@ -10,31 +10,34 @@
         KeyDown="Window_OnKey" >
     <!--  PreviewLostKeyboardFocus="MainWindow_OnPreviewLostKeyboardFocus" -->
     <Grid>
+        <DockPanel LastChildFill="True">
+            <Menu DockPanel.Dock="Top">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_Open Folder" Click="OpenFolderClick"/>
+                    <MenuItem Header="_Settings" Click="ShowSettingsWindow"/>
+                <Separator />
+                <MenuItem Header="_Exit" />
+                </MenuItem>
 
-
-            <DockPanel LastChildFill="True">
-                <Menu DockPanel.Dock="Top">
-                    <MenuItem Header="_File">
-                        <MenuItem Header="_Open Folder" Click="OpenFolderClick"/>
-                        <MenuItem Header="_Settings" Click="ShowSettingsWindow"/>
-                    <Separator />
-                    <MenuItem Header="_Exit" />
-                    </MenuItem>
-
-                    <MenuItem Header="_View">
-                        <MenuItem Name="LengthMenuItem" Header="_Lengths" IsCheckable="True" IsChecked="False" Click="LengthClick"/>
-                    </MenuItem>
-                    <TextBlock Text="Current folder: " TextWrapping="Wrap"/>
-                    <TextBox x:Name="textBoxFolderPath" Text="" TextWrapping="Wrap" Width="925"/>
+                <MenuItem Header="_View">
+                    <MenuItem Name="LengthMenuItem" Header="_Lengths" IsCheckable="True" IsChecked="False" Click="LengthClick"/>
+                </MenuItem>
+                <TextBlock Text="Current folder: " TextWrapping="Wrap"/>
+                <TextBox x:Name="textBoxFolderPath" Text="" TextWrapping="Wrap" Width="925"/>
                 <TextBlock TextWrapping="Wrap" Text="Pic"/>
                 <TextBox x:Name="CurrIdx" TextWrapping="Wrap" Text="" Width="35" TextChanged="CurrIdx_TextChanged"/>
                 <TextBlock TextWrapping="Wrap" Text="of"/>
                 <TextBlock x:Name="NumOfPics" TextWrapping="Wrap" Text="" Width="25"/>
+            </Menu >
+            <Menu DockPanel.Dock="Top">
+                <RadioButton x:Name="OgImgBtn" GroupName="ShownImageType" Checked="OgImgBtn_OnChecked">Original image</RadioButton>
+                <RadioButton x:Name="ProcessedImgBtn" GroupName="ShownImageType" Checked="ProcessedImgBtn_Checked">Processed image</RadioButton>
+                <CheckBox x:Name="OverlayCheckBox" Checked="OverlayCheckBox_Checked" >Show overlay</CheckBox>
             </Menu>
-                <WindowsFormsHost>
+            <WindowsFormsHost>
                 <emui:ImageBox x:Name="EmguImgBox" PreviewKeyDown="Window_OnKey_Prev" MouseDoubleClick="EmguImgBox_OnClick"/>
             </WindowsFormsHost>
-            </DockPanel>
+        </DockPanel>
 
     </Grid>
 </Window>

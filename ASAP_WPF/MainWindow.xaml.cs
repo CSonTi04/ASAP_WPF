@@ -19,6 +19,8 @@ using Path = System.IO.Path;
 using Emgu.CV.UI;
 using System.Windows.Forms;
 using CsvHelper.Configuration.Attributes;
+using Emgu.CV;
+using Emgu.CV.Structure;
 using KeyEventArgs = System.Windows.Forms.KeyEventArgs;
 using ListBox = System.Windows.Forms.ListBox;
 using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
@@ -57,6 +59,57 @@ namespace ASAP_WPF
             LengthWindow = new LengthWindow {Visibility = Visibility.Collapsed};
         }
 
+        public void UpdateImgBox()
+        {
+            this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
+            var processedImgBtnBool = this.ProcessedImgBtn.IsChecked;
+            //TODO ezt lecserélni valami szebbre egy ENUMMAL
+            var ogImgBtnBool = this.OgImgBtn.IsChecked;
+            if (ogImgBtnBool != null && (bool)ogImgBtnBool)
+            {
+                this.EmguImgBox.Image = this.ImageHandler.Image;
+            }
+
+            if (processedImgBtnBool != null && (bool)processedImgBtnBool)
+            {
+                this.EmguImgBox.Image = this.ImageHandler.ProcessedImage;
+            }
+
+            var overlayCbBool = this.OverlayCheckBox.IsChecked;
+
+            if (null != this.ImageHandler.ImgName && overlayCbBool != null && (bool)overlayCbBool)
+            {
+                //Mat tempImg = new Mat();
+                //Emgu.CV.CvInvoke.Merge();
+                //https://stackoverflow.com/questions/40895785/using-opencv-to-overlay-transparent-image-onto-another-image
+                //https://stackoverflow.com/questions/36921496/how-to-join-png-with-alpha-transparency-in-a-frame-in-realtime/37198079#37198079
+                //Na mi legyen? kombináljam a képeket, vagy csak vetítsem rá?
+                //Na így utólag a zoomolás miatt ez nem tűnik annyira jó ötletnek :|
+                //EmguImgBoxOverlay.Image = ImageHandler.CountourImage;
+
+            }
+        }
+
+        /*
+             def update(self, *args):
+        if self.last_clicked_point is not None:
+            self.image_handler.draw_cells_contour((self.last_clicked_point.x(), self.last_clicked_point.y()))
+        if self.radio_original.isChecked():
+            self.image_item.setImage(self.image_handler.get_image())
+        elif self.radio_processed.isChecked():
+            self.image_item.setImage(self.image_handler.get_processed_image(),
+                                     autoLevels=False)  # Autolevel would change contrast which we don't want for the processed img
+        if self.image_handler.image_name is not None:
+            self.file_name_widget.setText(' Frame: ' + str(self.image_handler.opened_image_number) + '/' + str(
+                len(self.image_handler.files) - 1) + '  ' + self.image_handler.image_name.split('\\')[-1])
+            self.set_overlay()
+
+    def set_overlay(self):
+        self.image_overlay_item.clear()
+        if self.checkbox_show_contours.isChecked():
+            self.image_overlay_item.setImage(self.image_handler.get_contour_image())
+         */
+
         private void OpenFolderClick(object sender, RoutedEventArgs e)
         {
             OpenFolder();
@@ -71,6 +124,8 @@ namespace ASAP_WPF
             EmguImgBox.Image = ImageHandler.CountourImage;
         }
 
+
+        /*
         private void DrawContours()
         {
             Switch = !Switch;
@@ -113,7 +168,7 @@ namespace ASAP_WPF
 
             RegisterCellLengths();
         }
-
+        */
         private void OpenFolder()
         {
             var folderDialog = new CommonOpenFileDialog {IsFolderPicker = true};
@@ -133,21 +188,23 @@ namespace ASAP_WPF
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            ProcessCurrImg();
+            //ProcessCurrImg();
         }
+
+        /*
 
         private void ProcessCurrImg()
         {
             var currImgNumber = ImageHandler.OpenedImgNumber;
             if (textBoxFolderPath.Text.Length <= 0) return;
             ImageHandler.Process();
-            LengthCollector.Add(currImgNumber, ImageHandler.GetAllCellLengthWithCenterPoint());
+            //LengthCollector.Add(currImgNumber, ImageHandler.GetAllCellLengthWithCenterPoint());
             //TempLengthList = LengthCollector.GetLengthList(currImgNumber, SettingsWindow.PPM_Sl.Value);
             TempLengthList = LengthCollector.GetLengthTripletList(currImgNumber, SettingsWindow.PPM_Sl.Value);
             LengthWindow.LengthGrid.ItemsSource = TempLengthList;
             LengthWindow.LengthGrid.Items.Refresh();
 
-            /*
+
             foreach (var VARIABLE in ImageHandler.Files)
             {
                 ImageHandler.NextImage();
@@ -155,8 +212,9 @@ namespace ASAP_WPF
                 //ImageHandler.SaveImgWithCountours();
                 //ImageHandler.ImgProcessor.ExportImg(Path.Combine(textBoxFolderPath.Text, ImageHandler.OpenedImgNumber + "_export.jpg"));
             }
-            */
+
         }
+        */
 
         private void LengthClick(object sender, RoutedEventArgs e)
         {
@@ -169,6 +227,14 @@ namespace ASAP_WPF
                     LengthCollector.GetLengthList(ImageHandler.OpenedImgNumber, Convert.ToDouble(SettingsWindow.PPM_Sl));
             }
             */
+            var currImgNumber = ImageHandler.OpenedImgNumber;
+            ImageHandler.Process();
+            LengthCollector.Add(currImgNumber,this.LastClickedPoint, ImageHandler.GetCellLength(LastClickedPoint));
+            //TODO lehet a lengthcollvetor néha takarítani is kellene :|
+            //TempLengthList = LengthCollector.GetLengthList(currImgNumber, SettingsWindow.PPM_Sl.Value);
+            TempLengthList = LengthCollector.GetLengthTripletList(currImgNumber, SettingsWindow.PPM_Sl.Value);
+            LengthWindow.LengthGrid.ItemsSource = TempLengthList;
+            LengthWindow.LengthGrid.Items.Refresh();
         }
 
         private void Window_OnKey(object sender, System.Windows.Input.KeyEventArgs e)
@@ -177,26 +243,27 @@ namespace ASAP_WPF
             {
 
                 case Key.Return:
-                    DrawContours();
+                    //DrawContours();
                     break;
                 case Key.Space:
-                    SwitchImg();
+                    //SwitchImg();
+                    //this.LengthCollector.Add();
                     break;
                 case Key.Prior:
                     ImageHandler.NextImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    EmguImgBox.Image = ImageHandler.Image;
+                    UpdateImgBox();
+                    //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
-                    Print("WPF");
                     break;
                 case Key.Next:
                     ImageHandler.PreviousImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    EmguImgBox.Image = ImageHandler.Image;
+                    UpdateImgBox();
+                    //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
-                    //EmguImgBox.Image = ImageHandler.ProcessedImage;Print("Winform");
-                    Print("WPF");
+                    //EmguImgBox.Image = ImageHandler.ProcessedImage;
                     break;
                 case Key.C:
                     ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.Clahe.ToString());
@@ -210,7 +277,7 @@ namespace ASAP_WPF
                     OpenFolder();
                     break;
                 case Key.P:
-                    ProcessCurrImg();
+                    //ProcessCurrImg();
                     break;
                 default:
                     return;
@@ -292,18 +359,18 @@ namespace ASAP_WPF
                 case Keys.Prior:
                     ImageHandler.PreviousImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    EmguImgBox.Image = ImageHandler.Image;
+                    UpdateImgBox();
+                    //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
-                    Print("Winform");
                     break;
                 case Keys.Next:
                     ImageHandler.NextImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    EmguImgBox.Image = ImageHandler.Image;
+                    UpdateImgBox();
+                    //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
-                    Print("Winform");
                     break;
                 case Keys.End:
                     break;
@@ -594,14 +661,11 @@ namespace ASAP_WPF
                 case Keys.Alt:
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    return;
             }
         }
 
-        private void Print(string text)
-        {
-            Console.Out.WriteLineAsync(text);
-        }
+
 
         private void CurrIdx_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -633,17 +697,87 @@ namespace ASAP_WPF
         */
         private void EmguImgBox_OnClick(object sender, MouseEventArgs e)
         {
-            this.LastClickedPoint = e.Location;
+            ConvertCoordinates(this.EmguImgBox,out var x0,out var y0,e.X,e.Y);
+            this.LastClickedPoint = new System.Drawing.Point(x0,y0);
             this.ImageHandler.Process();
             this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
-            /*
-             pos = evt[0]._scenePos
-        mousePoint = self.view_box.mapSceneToView(pos)
-        self.last_clicked_point = mousePoint
-        self.image_handler.draw_cells_contour((mousePoint.x(), mousePoint.y()))
+        }
 
-        self.update()
-             */
+        public void ConvertCoordinates(ImageBox picBox, out int x0, out int y0, int x, int y)
+        {
+            var picHgt = picBox.ClientSize.Height;
+            var picWid = picBox.ClientSize.Width;
+            var size = picBox.Image.GetInputArray().GetSize();
+            var imgHgt = size.Height;
+            var imgWid = size.Width;
+            /*
+            // Ez jó fallbacknek, de soknak érzem azt, hogy egy képet betöltsünk csak azért, hogy megtudjuk a felbontásást
+            var tempUrl = ImageHandler.getCurrentImgPath();
+            var imgFromImgBox = new Image<Gray, byte>(tempUrl);
+            var imgHgt = imgFromImgBox.Height;
+            var imgWid = imgFromImgBox.Width;
+            */
+
+            x0 = x;
+            y0 = y;
+            switch (picBox.SizeMode)
+            {
+                case PictureBoxSizeMode.AutoSize:
+                case PictureBoxSizeMode.Normal:
+                    // These are okay. Leave them alone.
+                    break;
+                case PictureBoxSizeMode.CenterImage:
+                    x0 = x - (picWid - imgWid) / 2;
+                    y0 = y - (picHgt - imgHgt) / 2;
+                    break;
+                case PictureBoxSizeMode.StretchImage:
+                    x0 = (int)(imgWid * x / (float)picWid);
+                    y0 = (int)(imgHgt * y / (float)picHgt);
+                    break;
+                case PictureBoxSizeMode.Zoom:
+                    var picAspect = picWid / (float)picHgt;
+                    var imgAspect = imgWid / (float)imgHgt;
+                    if (picAspect > imgAspect)
+                    {
+                        // The PictureBox is wider/shorter than the image.
+                        y0 = (int)(imgHgt * y / (float)picHgt);
+
+                        // The image fills the height of the PictureBox.
+                        // Get its width.
+                        float scaledWidth = imgWid * picHgt / imgHgt;
+                        var dx = (picWid - scaledWidth) / 2;
+                        x0 = (int)((x - dx) * imgHgt / (float)picHgt);
+                    }
+                    else
+                    {
+                        // The PictureBox is taller/thinner than the image.
+                        x0 = (int)(imgWid * x / (float)picWid);
+
+                        // The image fills the height of the PictureBox.
+                        // Get its height.
+                        float scaledHeight = imgHgt * picWid / imgWid;
+                        var dy = (picHgt - scaledHeight) / 2;
+                        y0 = (int)((y - dy) * imgWid / picWid);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void OgImgBtn_OnChecked(object sender, RoutedEventArgs e)
+        {
+            UpdateImgBox();
+        }
+
+        private void ProcessedImgBtn_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdateImgBox();
+        }
+
+        private void OverlayCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdateImgBox();
         }
     }
 }
