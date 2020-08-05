@@ -59,20 +59,23 @@ namespace ASAP_WPF
             LengthWindow = new LengthWindow {Visibility = Visibility.Collapsed};
         }
 
-        public void UpdateImgBox()
+        public void UpdateImgBox(bool _originIsMousClick)
         {
-            this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
+
+            if(_originIsMousClick) this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
+            
             var processedImgBtnBool = this.ProcessedImgBtn.IsChecked;
             //TODO ezt lecserélni valami szebbre egy ENUMMAL
             var ogImgBtnBool = this.OgImgBtn.IsChecked;
             if (ogImgBtnBool != null && (bool)ogImgBtnBool)
             {
-                this.EmguImgBox.Image = this.ImageHandler.Image;
+                ImageHandler.UpdateImage();
+                EmguImgBox.Image = ImageHandler.Image;
             }
-
-            if (processedImgBtnBool != null && (bool)processedImgBtnBool)
+           else if(processedImgBtnBool != null && (bool)processedImgBtnBool)
             {
-                this.EmguImgBox.Image = this.ImageHandler.ProcessedImage;
+                ImageHandler.Process();
+                EmguImgBox.Image = ImageHandler.ProcessedImage;
             }
 
             var overlayCbBool = this.OverlayCheckBox.IsChecked;
@@ -151,7 +154,7 @@ namespace ASAP_WPF
                 //LengthCollector.Add(ImageHandler.OpenedImgNumber, ImageHandler.GetAllCellLengthWithCenterPoint());
             }
         }
-
+        */
         private void SwitchImg()
         {
             Switch = !Switch;
@@ -166,9 +169,8 @@ namespace ASAP_WPF
                 EmguImgBox.Image = ImageHandler.Image;
             }
 
-            RegisterCellLengths();
         }
-        */
+        
         private void OpenFolder()
         {
             var folderDialog = new CommonOpenFileDialog {IsFolderPicker = true};
@@ -246,13 +248,13 @@ namespace ASAP_WPF
                     //DrawContours();
                     break;
                 case Key.Space:
-                    //SwitchImg();
+                    SwitchImg();
                     //this.LengthCollector.Add();
                     break;
                 case Key.Prior:
                     ImageHandler.NextImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox();
+                    UpdateImgBox(false);
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -260,7 +262,7 @@ namespace ASAP_WPF
                 case Key.Next:
                     ImageHandler.PreviousImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox();
+                    UpdateImgBox(false);
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -359,7 +361,7 @@ namespace ASAP_WPF
                 case Keys.Prior:
                     ImageHandler.PreviousImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox();
+                    UpdateImgBox(false);
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -367,7 +369,7 @@ namespace ASAP_WPF
                 case Keys.Next:
                     ImageHandler.NextImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox();
+                    UpdateImgBox(false);
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -701,6 +703,8 @@ namespace ASAP_WPF
             this.LastClickedPoint = new System.Drawing.Point(x0,y0);
             this.ImageHandler.Process();
             this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
+            UpdateImgBox(true);
+            //itt még hiányzik valami
         }
 
         public void ConvertCoordinates(ImageBox picBox, out int x0, out int y0, int x, int y)
@@ -767,17 +771,17 @@ namespace ASAP_WPF
 
         private void OgImgBtn_OnChecked(object sender, RoutedEventArgs e)
         {
-            UpdateImgBox();
+            UpdateImgBox(false);
         }
 
         private void ProcessedImgBtn_Checked(object sender, RoutedEventArgs e)
         {
-            UpdateImgBox();
+            UpdateImgBox(false);
         }
 
         private void OverlayCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            UpdateImgBox();
+            UpdateImgBox(false);
         }
     }
 }
