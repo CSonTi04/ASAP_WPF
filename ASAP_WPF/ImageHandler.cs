@@ -4,12 +4,15 @@ using Emgu.CV.Util;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Windows;
+using Point = System.Drawing.Point;
 
 namespace ASAP_WPF
 {
-    internal class ImageHandler
+    public class ImageHandler
     {
         public string FolderName { get; set; }
         public string ImgName { get; set; }
@@ -18,17 +21,17 @@ namespace ASAP_WPF
         public Mat Image { get; set; }
         public Mat ProcessedImage { get; set; }
         public VectorOfVectorOfPoint Contours { get; set; }
-        public Mat CountourImage { get; set; }
+        public Mat ContourImage { get; set; }
 
-        public Mat ProcessedImgWithCountourOverlay { get; set; }
-        public Mat OgImgWithCountourOverlay { get; set; }
-
+        public Mat ProcessedImgWithContourOverlay { get; set; }
+        public Mat OgImgWithContourOverlay { get; set; }
+        /*
         public enum ModTypeEnum
         {
             Clahe,
             EqualizeHist
         }
-
+        */
         private int AdaptiveThresholdConstant { get; set; }
         //sginals? https://softwareengineering.stackexchange.com/questions/142458/any-practical-alternative-to-the-signals-slots-model-for-gui-programming
         //threadpool System.Threading.ThreadPool;
@@ -49,12 +52,12 @@ namespace ASAP_WPF
             Image = null;
             ProcessedImage = null;
             Contours = new VectorOfVectorOfPoint();
-            CountourImage = null;
+            ContourImage = null;
             AdaptiveThresholdConstant = 5;
             ImgProcessor = new ImageProcessor();
         }
 
-        public ImageHandler(String _path)
+        public ImageHandler(string path)
         {
             FolderName = null;
             ImgName = null;
@@ -63,11 +66,13 @@ namespace ASAP_WPF
             Image = null;
             ProcessedImage = null;
             Contours = new VectorOfVectorOfPoint();
-            CountourImage = null;
+            ContourImage = null;
             AdaptiveThresholdConstant = 5;
             ImgProcessor = new ImageProcessor();
-            this.UpdateFolder(_path);
+            this.UpdateFolder(path);
         }
+
+
 
         public void UpdateImage()
         {
@@ -79,8 +84,9 @@ namespace ASAP_WPF
             this.ImgProcessor.SetValues(this.Image, this.AdaptiveThresholdConstant);
             //this.isloading == ture???? ez valami signalos lehet
             //this.signals.image_provcessing_change.emit(True)
+            Process();
         }
-
+        /*
         public void UpdateImage(string modType)
         {
             if (this.Files.Count <= 0 || this.OpenedImgNumber < 0) return;
@@ -99,161 +105,177 @@ namespace ASAP_WPF
                 this.ImgProcessor.SetValues(this.Image, this.AdaptiveThresholdConstant);
             }
         }
+        */
 
-        public void ProcessProcessedThread(List<object> _returnedList)
-        {
-            this.ProcessedImage = (Mat) _returnedList[0];
-            this.Contours = (VectorOfVectorOfPoint) _returnedList[1];
-            this.CountourImage = (Mat) _returnedList[2];
-
-            //this.loading = False
-            //this.signals.image_processing_change.emit(False)
-        }
 
         //saját
         public void Process()
         {
+            //TODO ezeknek a refeknek az elhagyása
             this.ProcessedImage = null;
-            this.CountourImage = null;
+            this.ContourImage = null;
             this.Contours.Clear();
             ImgProcessor.Process();
             this.ProcessedImage = ImgProcessor.ImageMat;
-            this.CountourImage = ImgProcessor.ContourImageMat;
+            this.ContourImage = ImgProcessor.ContourImageMat;
             this.Contours.Push(ImgProcessor.ContoursToReturn);
-            //this.ProcessedImgWithCountourOverlay = OverlayImageMats(this.ProcessedImage, this.CountourImage);
-            //this.OgImgWithCountourOverlay  = OverlayImageMats(this.Image, this.CountourImage);
+            MainWindow.ImageProcessorExaminer.AddImage(Image, "ImageHandler_Image");
+            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage, "ImageHandler_ProcessedImage");
+            MainWindow.ImageProcessorExaminer.AddImage(ContourImage, "ImageHandler_ContourImage");
+            //new PopupImage(Image, "ImageHandler_Image").Show();
+            //new PopupImage(ProcessedImage, "ImageHandler_ProcessedImage").Show();
+            //new PopupImage(ContourImage, "ImageHandler_ContourImage").Show();
+        }
+
+        public void ProcessOverlays(System.Drawing.Point lastClickedPoint)
+        {
+            //Ide kell majd a single cell contourt átdobni
+            var processedImgWithSingleCellContour = DrawCellContourBoxToNewMat(lastClickedPoint, this.ProcessedImage);
+            MainWindow.ImageProcessorExaminer.AddImage(processedImgWithSingleCellContour.createNewHardCopyFromMat(), "processedImgWithSingleCellContour");
+            var ogImgWithSingleCellContour = DrawCellContourBoxToNewMat(lastClickedPoint, this.Image);
+            MainWindow.ImageProcessorExaminer.AddImage(ogImgWithSingleCellContour.createNewHardCopyFromMat(), "ogImgWithSingleCellContour");
+            this.ProcessedImgWithContourOverlay = OverlayImageMats(processedImgWithSingleCellContour, this.ContourImage);
+            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
+            this.OgImgWithContourOverlay  = OverlayImageMats(ogImgWithSingleCellContour, this.ContourImage);
+            MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
+
         }
 
         public Mat OverlayImageMats(Mat obscuredImgMat, Mat overlayedImgMat)
         {
-            var overlay_mask = overlayedImgMat;
+            var matToReturn = new Mat();
+            try
+            {
+                //Valami azt súgja, hogy
+                //https://answers.opencv.org/question/24463/how-to-remove-black-background-from-grabcut-output-image-in-opencv-android/?comment=24786#comment-24786
+                //Ez kell majd
+                var tempImgMat = new Mat();
+                var alpha = new Mat();
+                //Amúgy is fekete fehér nem? - most már biztos, mert már csak 1 csatornája van
 
-            Emgu.CV.CvInvoke.CvtColor(overlay_mask, overlay_mask, Emgu.CV.CvEnum.ColorConversion.Gray2Bgr);
-            //https://stackoverflow.com/questions/11958473/opencv-emgu-cv-compositing-images-with-alpha
-            //https://github.com/karlphillip/GraphicsProgramming/blob/master/cvDisplacementMapFilter/main.cpp
+                CvInvoke.CvtColor(overlayedImgMat, tempImgMat, Emgu.CV.CvEnum.ColorConversion.Bgr2Gray);
+                //new PopupImage(tempImgMat, "tempImgMat").Show();
+                //new PopupImage(alpha, "alpha").Show();
+                CvInvoke.Threshold(tempImgMat, alpha, 100, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+                matToReturn = Mat.Zeros(overlayedImgMat.Size.Width, overlayedImgMat.Size.Height, overlayedImgMat.Depth, overlayedImgMat.NumberOfChannels);
+                // Multiply the foreground with the alpha matte
+                CvInvoke.Multiply(alpha, tempImgMat, tempImgMat);
+                //new PopupImage(tempImgMat, "tempImgMat_2").Show();
+                // Multiply the background with ( 1 - alpha )
+                //http://www.emgu.com/wiki/files/3.0.0/document/html/e3f8abb7-3706-0ccd-46f0-8c57c2232585.htm
+                var tempScalarAlphaMat = new MCvScalar(1.0, 1.0, 1.0, 1.0) - alpha;
+                //var tempScalarAlphaMat = new MCvScalar(1.0) - alpha;
+                var tempScalarAlphaScalar = tempScalarAlphaMat;
 
-            /*
-            import numpy as np
-            import cv2
-
-            # ==============================================================================
-
-            def blend_transparent(face_img, overlay_t_img):
-            # Split out the transparency mask from the colour info
-            overlay_img = overlay_t_img[:,:,:3] # Grab the BRG planes
-            overlay_mask = overlay_t_img[:,:,3:]  # And the alpha plane
-
-            # Again calculate the inverse mask
-            background_mask = 255 - overlay_mask
-
-            # Turn the masks into three channel, so we can use them as weights
-            overlay_mask = cv2.cvtColor(overlay_mask, cv2.COLOR_GRAY2BGR)
-            background_mask = cv2.cvtColor(background_mask, cv2.COLOR_GRAY2BGR)
-
-            # Create a masked out face image, and masked out overlay
-            # We convert the images to floating point in range 0.0 - 1.0
-            face_part = (face_img * (1 / 255.0)) * (background_mask * (1 / 255.0))
-            overlay_part = (overlay_img * (1 / 255.0)) * (overlay_mask * (1 / 255.0))
-
-            # And finally just add them together, and rescale it back to an 8bit integer image
-            return np.uint8(cv2.addWeighted(face_part, 255.0, overlay_part, 255.0, 0.0))
-
-            # ==============================================================================
-
-            # We load the images
-            face_img = cv2.imread("lena.png", -1)
-            overlay_t_img = cv2.imread("overlay_transparent.png", -1) # Load with transparency
-
-            result_2 = blend_transparent(face_img, overlay_t_img)
-            cv2.imwrite("merged_transparent.png", result_2)
-             */
-            Mat overlayedMat = null;
-
-            return overlayedMat;
+                //CvInvoke.Multiply(tempScalarAlphaScalar, obscuredImgMat, obscuredImgMat);
+                CvInvoke.Multiply(obscuredImgMat, tempScalarAlphaScalar, obscuredImgMat);
+                CvInvoke.Add(tempImgMat, obscuredImgMat, matToReturn);
+                //https://www.learnopencv.com/alpha-blending-using-opencv-cpp-python/
+                //https://stackoverflow.com/questions/11958473/opencv-emgu-cv-compositing-images-with-alpha
+                //https://github.com/karlphillip/GraphicsProgramming/blob/master/cvDisplacementMapFilter/main.cpp
+                //https://stackoverflow.com/questions/45660427/emgu-c-sharp-opencv-make-color-black-transparent
+                //https://www.learnopencv.com/alpha-blending-using-opencv-cpp-python/
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+            return matToReturn;
         }
 
-        public void UpdateFolder(String _path)
+
+        public void UpdateFolder(string path)
         {
-            var attr = File.GetAttributes(_path);
-            if (null == _path && (attr & FileAttributes.Directory) == FileAttributes.Directory)
+            if (path == null) throw new ArgumentNullException(nameof(path));
+            var attr = File.GetAttributes(path);
+            if ((attr & FileAttributes.Directory) != FileAttributes.Directory)
             {
                 return;
             }
 
-            this.FolderName = _path;
-            this.Files = new List<string>(Directory.GetFiles(_path, "*.jpg")).OrderBy(q => q).ToList();
+            this.FolderName = path;
+            this.Files = new List<string>(Directory.GetFiles(path, "*.jpg")).OrderBy(q => q).ToList();
             this.OpenedImgNumber = 0;
-            this.UpdateImage("");
+            this.UpdateImage();
         }
 
         public void NextImage()
         {
-            //if is loading return??? ezekre tényleg meg kell nézni a dolgokat
             if (this.OpenedImgNumber + 1 < this.Files.Count)
             {
                 this.OpenedImgNumber++;
             }
-
             this.UpdateImage();
         }
 
         public void PreviousImage()
         {
-            //if is loading return??? ezekre tényleg meg kell nézni a dolgokat
             if (this.OpenedImgNumber - 1 >= 0)
             {
                 this.OpenedImgNumber--;
             }
-
             this.UpdateImage();
         }
 
-        public void
-            SetAdaptiveThresholdConstant(
-                int _value) //http://www.learncsharptutorial.com/threadpooling-csharp-example.php
+        public void SetAdaptiveThresholdConstant(int value) //http://www.learncsharptutorial.com/threadpooling-csharp-example.php
         {
-            if (this.AdaptiveThresholdConstant == _value)
+            if (this.AdaptiveThresholdConstant == value)
             {
                 return;
             }
 
-            this.AdaptiveThresholdConstant = _value;
+            this.AdaptiveThresholdConstant = value;
             //this.loading = True
             //this.signals.image_processing_change.emit(True)
             //ThreadPool.QueueUserWorkItem(this.ImgProcessor);
             this.ImgProcessor.RunThread();
         }
 
-        public void JumpToImage(int _idx)
+        public void JumpToImage(int idx)
         {
             //If this is loading return????
-            if (_idx < 0 || _idx >= this.Files.Count) return;
-            this.OpenedImgNumber = _idx;
+            if (idx < 0 || idx >= this.Files.Count) return;
+            this.OpenedImgNumber = idx;
             UpdateImage();
         }
 
-        public void DrawCellCountours(PointF _point)
+        public void DrawCellContour(IInputOutputArray imgToMod,PointF point)
         {
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
-                if (!(CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)) continue;
-                InnerDrawMethod(tempVector);
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
+                InnerDrawMethod(imgToMod,tempVector);
                 break;
             }
         }
 
-        private void InnerDrawMethod(VectorOfPoint tempVector)
+        private void InnerDrawMethod(IInputOutputArray imgToMod, IInputArray tempVector)
         {
             var tempRect = CvInvoke.MinAreaRect(tempVector);
             var box = CvInvoke.BoxPoints(tempRect);
-            //var boxVec = new VectorOfPointF(box);
-            CvInvoke.PutText(CountourImage, tempRect.Size.Height.ToString(),
-                new System.Drawing.Point((int) (10 + box[0].X), (int) (10 + box[0].Y)),
+            var boxVec = new VectorOfPointF(box);
+            CvInvoke.DrawContours(imgToMod, boxVec, 0, new MCvScalar(0,0,255),2);
+            CvInvoke.PutText(imgToMod, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
+                new Point((int) (10 + box[0].X), (int) (10 + box[0].Y)),
                 Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
         }
 
-        public void DrawAllCellCountours()
+        public Mat DrawCellContourBoxToNewMat(PointF point, Mat imgToMod)
+        {
+            if (imgToMod == null) throw new ArgumentNullException(nameof(imgToMod));
+            var returnMat = imgToMod.createNewHardCopyFromMat();
+            foreach (var contour in Contours.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPoint(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
+                InnerDrawMethod(returnMat,tempVector);
+                break;
+            }
+            return returnMat;
+        }
+
+        public void DrawAllCellContours()
         {
             foreach (var contour in Contours.ToArrayOfArray())
             {
@@ -261,21 +283,21 @@ namespace ASAP_WPF
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
                 var box = CvInvoke.BoxPoints(tempRect);
                 var boxVec = new VectorOfPointF(box);
-                CvInvoke.PutText(CountourImage, tempRect.Size.Height.ToString(),
-                    new System.Drawing.Point((int)(10 + boxVec[0].X), (int)(10 + boxVec[0].Y)),
+                CvInvoke.PutText(ContourImage, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
+                    new Point((int)(10 + boxVec[0].X), (int)(10 + boxVec[0].Y)),
                     Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
             }
         }
 
         //Returns the length of a cell around a point
-        public double GetCellLength(Point _point)
+        public double GetCellLength(Point point)
         {
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
-                if (!(CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)) continue;
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
-                var box = CvInvoke.BoxPoints(tempRect);
+                CvInvoke.BoxPoints(tempRect);
                 return tempRect.Size.Height;
             }
             return -1.0;
@@ -293,21 +315,21 @@ namespace ASAP_WPF
         }
 
 
-        public void SaveImgWithCountours(PointF _point)
+        public void SaveImgWithCountours(PointF point)
         {
-            var ImgToSave = this.Image;
+            var imgToSave = this.Image;
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
-                CvInvoke.DrawContours(ImgToSave, tempVector, 0, new MCvScalar(0, 255, 0), 2);
+                CvInvoke.DrawContours(imgToSave, tempVector, 0, new MCvScalar(0, 255, 0), 2);
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
                 var box = CvInvoke.BoxPoints(tempRect);
                 var boxVec = new VectorOfPointF(box);
-                CvInvoke.DrawContours(ImgToSave, boxVec, 0, new MCvScalar(0, 0, 255), 2);
-                if (CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)
+                CvInvoke.DrawContours(imgToSave, boxVec, 0, new MCvScalar(0, 0, 255), 2);
+                if (CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)
                 {
-                    CvInvoke.PutText(CountourImage, tempRect.Size.Height.ToString(),
-                        new System.Drawing.Point((int) (10 + boxVec[0].X), (int) (10 + boxVec[0].Y)),
+                    CvInvoke.PutText(ContourImage, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
+                        new Point((int) (10 + boxVec[0].X), (int) (10 + boxVec[0].Y)),
                         Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
                 }
             }
@@ -318,27 +340,27 @@ namespace ASAP_WPF
                 Directory.CreateDirectory(processedDir);
             }
 
-            CvInvoke.Imwrite(processedDir + Path.DirectorySeparatorChar + this.OpenedImgNumber + ".jpg", ImgToSave);
+            CvInvoke.Imwrite(processedDir + Path.DirectorySeparatorChar + this.OpenedImgNumber + ".jpg", imgToSave);
         }
 
-        public PointF ContourCenter(PointF _point)
+        public Point ContourCenter(Point point)
         {
-            PointF temp = new PointF();
+            var temp = new Point();
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
-                if (!(CvInvoke.PointPolygonTest(tempVector, _point, true) >= 0)) continue;
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
                 var moment = CvInvoke.Moments(tempVector);
                 var cx = moment.M10 / moment.M00;
                 var cy = moment.M01 / moment.M00;
-                temp = new PointF((int) cx, (int) cy);
+                temp = new Point((int) cx, (int) cy);
                 break;
             }
 
             return temp;
         }
 
-        public string getCurrentImgPath()
+        public string GetCurrentImgPath()
         {
             return  Path.Combine(this.FolderName, this.ImgName);
         }

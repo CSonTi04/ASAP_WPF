@@ -5,9 +5,9 @@ using System.Threading;
 
 namespace ASAP_WPF
 {
-    abstract class BaseThread
+    public abstract class BaseThread
     {
-        private Thread _thread;
+        private readonly Thread _thread;
 
         protected BaseThread()
         {

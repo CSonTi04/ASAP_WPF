@@ -33,85 +33,85 @@ namespace ASAP_WPF
     public partial class MainWindow : Window
     {
 
-        ImageHandler ImageHandler = new ImageHandler();
+        //ImageHandler ImageHandler = new ImageHandler();
+        private ImageHandler ImageHandler { get; set; }
+        //https://stackoverflow.com/questions/14262143/wpf-displaying-emgu-image-using-binding
+        private Mat ImgToDisplay { get; set; }
         private System.Drawing.Point LastClickedPoint { get; set; }
         private LengthCollector LengthCollector { get; set; }
         private bool Switch { get; set; }
         private SettingsWindow SettingsWindow { get; set; }
 
         private LengthWindow LengthWindow { get; set; }
+        public static ImageProcessorExaminer ImageProcessorExaminer { get; set; }
 
         //private List<(int, double, double)> TempLengthList { get; set; }
         private List<LengthTriplet> TempLengthList { get; set; }
 
-        private static readonly Regex _regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
+        private static readonly Regex Regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
 
         public MainWindow()
         {
             InitializeComponent();
+            ImageHandler = new ImageHandler();
             LengthCollector = new LengthCollector();
             EmguImgBox.SizeMode = PictureBoxSizeMode.Zoom;
             //hogy ne lehessen pan-elni és zoomolni
             //EmguImgBox.FunctionalMode = Emgu.CV.UI.ImageBox.FunctionalModeOption.Minimum;
             //EmguImgBox.VerticalScrollBar.KeyPress
+            ImgToDisplay = new Mat();
             Switch = false;
+            OgImgBtn.IsChecked = true;
+            ProcessedImgBtn.IsChecked = false;
             SettingsWindow = new SettingsWindow {Visibility = Visibility.Collapsed};
             LengthWindow = new LengthWindow {Visibility = Visibility.Collapsed};
+            ImageProcessorExaminer = new ImageProcessorExaminer()
+            {
+                Visibility = Visibility.Collapsed
+            };
         }
 
-        public void UpdateImgBox(bool _originIsMousClick)
+        public void UpdateImgBox(bool originIsMousClick)
         {
+            if (null == ImageHandler.FolderName) return;
+            //if(_originIsMousClick) this.ImageHandler.DrawCellContour(this.LastClickedPoint);
 
-            if(_originIsMousClick) this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
-            
             var processedImgBtnBool = this.ProcessedImgBtn.IsChecked;
             //TODO ezt lecserélni valami szebbre egy ENUMMAL
             var ogImgBtnBool = this.OgImgBtn.IsChecked;
             if (ogImgBtnBool != null && (bool)ogImgBtnBool)
             {
-                ImageHandler.UpdateImage();
-                EmguImgBox.Image = ImageHandler.Image;
+                ImgToDisplay = ImageHandler.Image;
             }
            else if(processedImgBtnBool != null && (bool)processedImgBtnBool)
             {
-                ImageHandler.Process();
-                EmguImgBox.Image = ImageHandler.ProcessedImage;
+                ImgToDisplay = ImageHandler.ProcessedImage;
             }
 
             var overlayCbBool = this.OverlayCheckBox.IsChecked;
 
-            if (null != this.ImageHandler.ImgName && overlayCbBool != null && (bool)overlayCbBool)
+            if (null == this.ImageHandler.ImgName || overlayCbBool == null || !(bool) overlayCbBool || !originIsMousClick) return;
+            //Mat tempImg = new Mat();
+            //Emgu.CV.CvInvoke.Merge();
+            //https://stackoverflow.com/questions/40895785/using-opencv-to-overlay-transparent-image-onto-another-image
+            //https://stackoverflow.com/questions/36921496/how-to-join-png-with-alpha-transparency-in-a-frame-in-realtime/37198079#37198079
+            //Na mi legyen? kombináljam a képeket, vagy csak vetítsem rá?
+            //Na így utólag a zoomolás miatt ez nem tűnik annyira jó ötletnek :|
+            //EmguImgBoxOverlay.Image = ImageHandler.CountourImage;
+            ImageHandler.ProcessOverlays(this.LastClickedPoint);
+
+            if (ogImgBtnBool != null && (bool)ogImgBtnBool)
             {
-                //Mat tempImg = new Mat();
-                //Emgu.CV.CvInvoke.Merge();
-                //https://stackoverflow.com/questions/40895785/using-opencv-to-overlay-transparent-image-onto-another-image
-                //https://stackoverflow.com/questions/36921496/how-to-join-png-with-alpha-transparency-in-a-frame-in-realtime/37198079#37198079
-                //Na mi legyen? kombináljam a képeket, vagy csak vetítsem rá?
-                //Na így utólag a zoomolás miatt ez nem tűnik annyira jó ötletnek :|
-                //EmguImgBoxOverlay.Image = ImageHandler.CountourImage;
-
+                ImgToDisplay = ImageHandler.OgImgWithContourOverlay;
             }
+            else if (processedImgBtnBool != null && (bool)processedImgBtnBool)
+            {
+                ImgToDisplay = ImageHandler.ProcessedImgWithContourOverlay;
+            }
+
+            EmguImgBox.Image = ImgToDisplay;
+
         }
-
-        /*
-             def update(self, *args):
-        if self.last_clicked_point is not None:
-            self.image_handler.draw_cells_contour((self.last_clicked_point.x(), self.last_clicked_point.y()))
-        if self.radio_original.isChecked():
-            self.image_item.setImage(self.image_handler.get_image())
-        elif self.radio_processed.isChecked():
-            self.image_item.setImage(self.image_handler.get_processed_image(),
-                                     autoLevels=False)  # Autolevel would change contrast which we don't want for the processed img
-        if self.image_handler.image_name is not None:
-            self.file_name_widget.setText(' Frame: ' + str(self.image_handler.opened_image_number) + '/' + str(
-                len(self.image_handler.files) - 1) + '  ' + self.image_handler.image_name.split('\\')[-1])
-            self.set_overlay()
-
-    def set_overlay(self):
-        self.image_overlay_item.clear()
-        if self.checkbox_show_contours.isChecked():
-            self.image_overlay_item.setImage(self.image_handler.get_contour_image())
-         */
 
         private void OpenFolderClick(object sender, RoutedEventArgs e)
         {
@@ -120,57 +120,29 @@ namespace ASAP_WPF
 
         private void ImgBoxClick(object sender, EventArgs e)
         {
+
             var me = (MouseEventArgs) e;
             var coordinates = me.Location;
-            ImageHandler.Process();
-            ImageHandler.DrawCellCountours(coordinates);
-            EmguImgBox.Image = ImageHandler.CountourImage;
+            this.LastClickedPoint = coordinates;
+            //ImageHandler.Process();
+            //ImageHandler.DrawCellContour(ImgToDisplay, coordinates);
+            //EmguImgBox.Image = ImgToDisplay;
+            //ImageHandler.ProcessOverlays(coordinates);
+            UpdateImgBox(true);
         }
-
-
-        /*
-        private void DrawContours()
-        {
-            Switch = !Switch;
-            if (Switch)
-            {
-                ImageHandler.Process();
-                ImageHandler.DrawAllCellCountours();
-                EmguImgBox.Image = ImageHandler.CountourImage;
-            }
-            else
-            {
-                //ImageHandler.UpdateImage("EqualizeHist");
-                EmguImgBox.Image = ImageHandler.Image;
-            }
-
-            RegisterCellLengths();
-        }
-
-        private void RegisterCellLengths()
-        {
-            if (!LengthCollector.ContainsKey(ImageHandler.OpenedImgNumber))
-            {
-                //LengthCollector.Add(ImageHandler.OpenedImgNumber, ImageHandler.GetAllCellLengthWithCenterPoint());
-            }
-        }
-        */
         private void SwitchImg()
         {
-            Switch = !Switch;
-            if (Switch)
-            {
-                ImageHandler.Process();
-                EmguImgBox.Image = ImageHandler.ProcessedImage;
-            }
-            else
-            {
-                ImageHandler.UpdateImage();
-                EmguImgBox.Image = ImageHandler.Image;
-            }
-
+            SwitchRadio();
+            EmguImgBox.Image = Switch ? ImageHandler.ProcessedImage : ImageHandler.Image;
         }
-        
+
+        private void SwitchRadio()
+        {
+            Switch = !Switch;
+            ProcessedImgBtn.IsChecked = Switch;
+            OgImgBtn.IsChecked = !Switch;
+        }
+
         private void OpenFolder()
         {
             var folderDialog = new CommonOpenFileDialog {IsFolderPicker = true};
@@ -193,30 +165,7 @@ namespace ASAP_WPF
             //ProcessCurrImg();
         }
 
-        /*
 
-        private void ProcessCurrImg()
-        {
-            var currImgNumber = ImageHandler.OpenedImgNumber;
-            if (textBoxFolderPath.Text.Length <= 0) return;
-            ImageHandler.Process();
-            //LengthCollector.Add(currImgNumber, ImageHandler.GetAllCellLengthWithCenterPoint());
-            //TempLengthList = LengthCollector.GetLengthList(currImgNumber, SettingsWindow.PPM_Sl.Value);
-            TempLengthList = LengthCollector.GetLengthTripletList(currImgNumber, SettingsWindow.PPM_Sl.Value);
-            LengthWindow.LengthGrid.ItemsSource = TempLengthList;
-            LengthWindow.LengthGrid.Items.Refresh();
-
-
-            foreach (var VARIABLE in ImageHandler.Files)
-            {
-                ImageHandler.NextImage();
-                ImageHandler.ImgProcessor.Process();
-                //ImageHandler.SaveImgWithCountours();
-                //ImageHandler.ImgProcessor.ExportImg(Path.Combine(textBoxFolderPath.Text, ImageHandler.OpenedImgNumber + "_export.jpg"));
-            }
-
-        }
-        */
 
         private void LengthClick(object sender, RoutedEventArgs e)
         {
@@ -268,12 +217,12 @@ namespace ASAP_WPF
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
                     break;
                 case Key.C:
-                    ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.Clahe.ToString());
-                    EmguImgBox.Image = ImageHandler.Image;
+                    //ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.Clahe.ToString());
+                    //EmguImgBox.Image = ImageHandler.Image;
                     break;
                 case Key.E:
-                    ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.EqualizeHist.ToString());
-                    EmguImgBox.Image = ImageHandler.Image;
+                    //ImageHandler.UpdateImage(ImageHandler.ModTypeEnum.EqualizeHist.ToString());
+                    //EmguImgBox.Image = ImageHandler.Image;
                     break;
                 case Key.O:
                     OpenFolder();
@@ -669,7 +618,7 @@ namespace ASAP_WPF
 
 
 
-        private void CurrIdx_TextChanged(object sender, TextChangedEventArgs e)
+        private void CurrentIndexTextChanged(object sender, TextChangedEventArgs e)
         {
             var tempText = CurrIdx.Text;
             if (!IsTextAllowed(tempText)) return;
@@ -682,7 +631,7 @@ namespace ASAP_WPF
 
         private static bool IsTextAllowed(string text)
         {
-            return !_regex.IsMatch(text);
+            return !Regex.IsMatch(text);
         }
 
 
@@ -701,8 +650,8 @@ namespace ASAP_WPF
         {
             ConvertCoordinates(this.EmguImgBox,out var x0,out var y0,e.X,e.Y);
             this.LastClickedPoint = new System.Drawing.Point(x0,y0);
-            this.ImageHandler.Process();
-            this.ImageHandler.DrawCellCountours(this.LastClickedPoint);
+            //this.ImageHandler.Process();
+            //this.ImageHandler.DrawCellContour(this.LastClickedPoint);
             UpdateImgBox(true);
             //itt még hiányzik valami
         }
@@ -714,13 +663,6 @@ namespace ASAP_WPF
             var size = picBox.Image.GetInputArray().GetSize();
             var imgHgt = size.Height;
             var imgWid = size.Width;
-            /*
-            // Ez jó fallbacknek, de soknak érzem azt, hogy egy képet betöltsünk csak azért, hogy megtudjuk a felbontásást
-            var tempUrl = ImageHandler.getCurrentImgPath();
-            var imgFromImgBox = new Image<Gray, byte>(tempUrl);
-            var imgHgt = imgFromImgBox.Height;
-            var imgWid = imgFromImgBox.Width;
-            */
 
             x0 = x;
             y0 = y;
@@ -782,6 +724,11 @@ namespace ASAP_WPF
         private void OverlayCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             UpdateImgBox(false);
+        }
+
+        private void ExaminerClick(object sender, RoutedEventArgs e)
+        {
+            ImageProcessorExaminer.Show();
         }
     }
 }

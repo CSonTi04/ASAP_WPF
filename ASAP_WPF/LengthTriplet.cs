@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ASAP_WPF
+﻿namespace ASAP_WPF
 {
     internal class LengthTriplet
     {
@@ -12,11 +6,11 @@ namespace ASAP_WPF
         public double HeightInPixel { get; set; }
         public double HeightInMicroMeter { get; set; }
 
-        public LengthTriplet(int _imgNumber, double _heightInPixel, double _heightInMicroMeter)
+        public LengthTriplet(int imgNumber, double heightInPixel, double heightInMicroMeter)
         {
-            this.ImageNumber = _imgNumber;
-            this.HeightInPixel = _heightInPixel;
-            this.HeightInMicroMeter = _heightInMicroMeter;
+            this.ImageNumber = imgNumber;
+            this.HeightInPixel = heightInPixel;
+            this.HeightInMicroMeter = heightInMicroMeter;
         }
     }
 }

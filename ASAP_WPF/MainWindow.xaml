@@ -21,11 +21,12 @@
 
                 <MenuItem Header="_View">
                     <MenuItem Name="LengthMenuItem" Header="_Lengths" IsCheckable="True" IsChecked="False" Click="LengthClick"/>
+                    <MenuItem Name="ExaminerItem" Header="_Examiner" IsCheckable="True" IsChecked="False" Click="ExaminerClick"/>
                 </MenuItem>
                 <TextBlock Text="Current folder: " TextWrapping="Wrap"/>
                 <TextBox x:Name="textBoxFolderPath" Text="" TextWrapping="Wrap" Width="925"/>
                 <TextBlock TextWrapping="Wrap" Text="Pic"/>
-                <TextBox x:Name="CurrIdx" TextWrapping="Wrap" Text="" Width="35" TextChanged="CurrIdx_TextChanged"/>
+                <TextBox x:Name="CurrIdx" TextWrapping="Wrap" Text="" Width="35" TextChanged="CurrentIndexTextChanged"/>
                 <TextBlock TextWrapping="Wrap" Text="of"/>
                 <TextBlock x:Name="NumOfPics" TextWrapping="Wrap" Text="" Width="25"/>
             </Menu >
@@ -35,7 +36,7 @@
                 <CheckBox x:Name="OverlayCheckBox" Checked="OverlayCheckBox_Checked" >Show overlay</CheckBox>
             </Menu>
             <WindowsFormsHost>
-                <emui:ImageBox x:Name="EmguImgBox" PreviewKeyDown="Window_OnKey_Prev" MouseDoubleClick="EmguImgBox_OnClick"/>
+                <emui:ImageBox x:Name="EmguImgBox" PreviewKeyDown="Window_OnKey_Prev" MouseDoubleClick="EmguImgBox_OnClick" />
             </WindowsFormsHost>
         </DockPanel>
 
