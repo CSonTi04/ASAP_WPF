@@ -26,6 +26,15 @@ namespace ASAP_WPF
             ImgList = new Dictionary<string, Mat>();
         }
 
+        public void Clear()
+        {
+            foreach (var node in from entry in ImgList where !ImgTreeView.Nodes.ContainsKey(entry.Key) select new TreeNode(entry.Key) {Name = entry.Key})
+            {
+                ImgTreeView.Nodes.Remove(node);
+            }
+            ImgList.Clear();
+        }
+
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             e.Cancel = true;

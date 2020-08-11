@@ -1,13 +1,14 @@
-﻿using Emgu.CV;
-using Emgu.CV.Structure;
-using Emgu.CV.Util;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
 using Point = System.Drawing.Point;
 
 namespace ASAP_WPF
@@ -18,13 +19,16 @@ namespace ASAP_WPF
         public string ImgName { get; set; }
         public List<string> Files { get; set; } //paths for the time being
         public int OpenedImgNumber { get; set; }
+        public VectorOfVectorOfPoint Contours { get; set; }
+
+        public int DetectedCellCount { get; set; }
         public Mat Image { get; set; }
         public Mat ProcessedImage { get; set; }
-        public VectorOfVectorOfPoint Contours { get; set; }
         public Mat ContourImage { get; set; }
-
+        //public Mat BoxedImage { get; set; }
         public Mat ProcessedImgWithContourOverlay { get; set; }
         public Mat OgImgWithContourOverlay { get; set; }
+        public Mat ImageToDisplay { get; set; }
         /*
         public enum ModTypeEnum
         {
@@ -40,7 +44,7 @@ namespace ASAP_WPF
 
         public override string ToString()
         {
-            return "ImageHandler, opened img:" + this.ImgName;
+            return "ImageHandler, opened img:" + ImgName;
         }
 
         public ImageHandler()
@@ -69,23 +73,24 @@ namespace ASAP_WPF
             ContourImage = null;
             AdaptiveThresholdConstant = 5;
             ImgProcessor = new ImageProcessor();
-            this.UpdateFolder(path);
+            UpdateFolder(path);
         }
 
 
 
         public void UpdateImage()
         {
-            if (this.Files.Count <= 0 || this.OpenedImgNumber < 0) return;
-            this.ImgName = this.Files[OpenedImgNumber];
+            if (Files.Count <= 0 || OpenedImgNumber < 0) return;
+            ImgName = Files[OpenedImgNumber];
             //itt lehetne kísérletezni, hogy egyből két árnyalatos szürkével menjen, vagy a hisztogram generáláshoz több árnyalatos legyen
             //tényleg meg kellene nézni, hogy ennek van -e effektje a kimenetelre
-            this.Image = CvInvoke.Imread(this.ImgName, Emgu.CV.CvEnum.ImreadModes.ReducedGrayscale8);
-            this.ImgProcessor.SetValues(this.Image, this.AdaptiveThresholdConstant);
+            Image = CvInvoke.Imread(ImgName, ImreadModes.ReducedGrayscale8);
+            ImgProcessor.SetValues(Image, AdaptiveThresholdConstant);
             //this.isloading == ture???? ez valami signalos lehet
             //this.signals.image_provcessing_change.emit(True)
             Process();
         }
+
         /*
         public void UpdateImage(string modType)
         {
@@ -107,42 +112,67 @@ namespace ASAP_WPF
         }
         */
 
-
+        public Mat GetImageToDisplay(MainWindow.ImageToDisplay ImgToDisplayEnum)
+        {
+            ImageToDisplay = ImgToDisplayEnum switch
+            {
+                MainWindow.ImageToDisplay.None => null,
+                MainWindow.ImageToDisplay.Original => Image,
+                MainWindow.ImageToDisplay.Processed => ProcessedImage,
+                MainWindow.ImageToDisplay.OriginalWithOverlay => OgImgWithContourOverlay,
+                MainWindow.ImageToDisplay.ProcessedWithOverlay => ProcessedImgWithContourOverlay,
+                _ => throw new ArgumentOutOfRangeException(nameof(ImgToDisplayEnum), ImgToDisplayEnum, null)
+            };
+            return ImageToDisplay;
+        }
         //saját
         public void Process()
         {
             //TODO ezeknek a refeknek az elhagyása
-            this.ProcessedImage = null;
-            this.ContourImage = null;
-            this.Contours.Clear();
+            ProcessedImage = null;
+            ContourImage = null;
+            Contours.Clear();
             ImgProcessor.Process();
-            this.ProcessedImage = ImgProcessor.ImageMat;
-            this.ContourImage = ImgProcessor.ContourImageMat;
-            this.Contours.Push(ImgProcessor.ContoursToReturn);
-            MainWindow.ImageProcessorExaminer.AddImage(Image, "ImageHandler_Image");
-            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage, "ImageHandler_ProcessedImage");
-            MainWindow.ImageProcessorExaminer.AddImage(ContourImage, "ImageHandler_ContourImage");
-            //new PopupImage(Image, "ImageHandler_Image").Show();
-            //new PopupImage(ProcessedImage, "ImageHandler_ProcessedImage").Show();
-            //new PopupImage(ContourImage, "ImageHandler_ContourImage").Show();
+            ProcessedImage = ImgProcessor.ImageMat;
+            ContourImage = ImgProcessor.ContourImageMat;
+            Contours.Push(ImgProcessor.ContoursToReturn);
+            DetectedCellCount = Contours.Size;
+            //BoxedImage = DrawAllCellContourBoundingBoxes();
+            MainWindow.ImageProcessorExaminer.AddImage(Image.createNewHardCopyFromMat(), "ImageHandler_Image");
+            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage.createNewHardCopyFromMat(), "ImageHandler_ProcessedImage");
+            MainWindow.ImageProcessorExaminer.AddImage(ContourImage.createNewHardCopyFromMat(), "ImageHandler_ContourImage");
+            //MainWindow.ImageProcessorExaminer.AddImage(BoxedImage.createNewHardCopyFromMat(), "ImageHandler_BoxedImage");
+            ProcessOverlays();
         }
 
-        public void ProcessOverlays(System.Drawing.Point lastClickedPoint)
+        public void ProcessOverlays()
         {
             //Ide kell majd a single cell contourt átdobni
-            var processedImgWithSingleCellContour = DrawCellContourBoxToNewMat(lastClickedPoint, this.ProcessedImage);
-            MainWindow.ImageProcessorExaminer.AddImage(processedImgWithSingleCellContour.createNewHardCopyFromMat(), "processedImgWithSingleCellContour");
-            var ogImgWithSingleCellContour = DrawCellContourBoxToNewMat(lastClickedPoint, this.Image);
-            MainWindow.ImageProcessorExaminer.AddImage(ogImgWithSingleCellContour.createNewHardCopyFromMat(), "ogImgWithSingleCellContour");
-            this.ProcessedImgWithContourOverlay = OverlayImageMats(processedImgWithSingleCellContour, this.ContourImage);
-            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
-            this.OgImgWithContourOverlay  = OverlayImageMats(ogImgWithSingleCellContour, this.ContourImage);
-            MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
+            //var processedImgWithSingleCellContourBox = DrawCellContourBoxToNewMat(lastClickedPoint, this.ProcessedImage);
+            //MainWindow.ImageProcessorExaminer.AddImage(processedImgWithSingleCellContourBox.createNewHardCopyFromMat(), "processedImgWithSingleCellContourBox");
+            //var ogImgWithSingleCellContourBox = DrawCellContourBoxToNewMat(lastClickedPoint, this.Image);
+            ///MainWindow.ImageProcessorExaminer.AddImage(ogImgWithSingleCellContourBox.createNewHardCopyFromMat(), "ogImgWithSingleCellContourBox");
+            //this.ProcessedImgWithContourOverlay = OverlayImageMats(processedImgWithSingleCellContourBox, processedImgWithSingleCellContourBox);
+            //MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
+            //this.OgImgWithContourOverlay  = OverlayImageMats(ogImgWithSingleCellContourBox, ogImgWithSingleCellContourBox);
+            //MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
 
+            //this.ProcessedImgWithContourOverlay = OverlayImageMats(this.ProcessedImage, this.BoxedImage);
+            //MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
+            //this.OgImgWithContourOverlay  = OverlayImageMats(this.Image, this.BoxedImage);
+            //MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
+
+            ProcessedImgWithContourOverlay = DrawAllCellContourBoundingBoxes(ProcessedImage);
+            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
+            OgImgWithContourOverlay = DrawAllCellContourBoundingBoxes(Image);
+            MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
         }
 
-        public Mat OverlayImageMats(Mat obscuredImgMat, Mat overlayedImgMat)
+        public Mat OverlayImageMats(Mat paramObscuredImgMat, Mat paramOverlayedImgMat)
         {
+
+            var obscuredImgMat = paramObscuredImgMat.createNewHardCopyFromMat();
+            var overlayImgMat = paramOverlayedImgMat.createNewHardCopyFromMat();
             var matToReturn = new Mat();
             try
             {
@@ -153,11 +183,18 @@ namespace ASAP_WPF
                 var alpha = new Mat();
                 //Amúgy is fekete fehér nem? - most már biztos, mert már csak 1 csatornája van
 
-                CvInvoke.CvtColor(overlayedImgMat, tempImgMat, Emgu.CV.CvEnum.ColorConversion.Bgr2Gray);
+                if (overlayImgMat.NumberOfChannels > 1)
+                {
+                    CvInvoke.CvtColor(overlayImgMat, tempImgMat, ColorConversion.Bgr2Gray);
+                }
+                else
+                {
+                    tempImgMat = overlayImgMat.createNewHardCopyFromMat();
+                }
                 //new PopupImage(tempImgMat, "tempImgMat").Show();
                 //new PopupImage(alpha, "alpha").Show();
-                CvInvoke.Threshold(tempImgMat, alpha, 100, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
-                matToReturn = Mat.Zeros(overlayedImgMat.Size.Width, overlayedImgMat.Size.Height, overlayedImgMat.Depth, overlayedImgMat.NumberOfChannels);
+                CvInvoke.Threshold(tempImgMat, alpha, 100, 255, ThresholdType.Binary);
+                matToReturn = Mat.Zeros(overlayImgMat.Size.Width, overlayImgMat.Size.Height, overlayImgMat.Depth, overlayImgMat.NumberOfChannels);
                 // Multiply the foreground with the alpha matte
                 CvInvoke.Multiply(alpha, tempImgMat, tempImgMat);
                 //new PopupImage(tempImgMat, "tempImgMat_2").Show();
@@ -193,89 +230,157 @@ namespace ASAP_WPF
                 return;
             }
 
-            this.FolderName = path;
-            this.Files = new List<string>(Directory.GetFiles(path, "*.jpg")).OrderBy(q => q).ToList();
-            this.OpenedImgNumber = 0;
-            this.UpdateImage();
+            FolderName = path;
+            Files = new List<string>(Directory.GetFiles(path, "*.jpg")).OrderBy(q => q).ToList();
+            OpenedImgNumber = 0;
+            UpdateImage();
         }
 
         public void NextImage()
         {
-            if (this.OpenedImgNumber + 1 < this.Files.Count)
+            if (OpenedImgNumber + 1 < Files.Count)
             {
-                this.OpenedImgNumber++;
+                OpenedImgNumber++;
             }
-            this.UpdateImage();
+            UpdateImage();
         }
 
         public void PreviousImage()
         {
-            if (this.OpenedImgNumber - 1 >= 0)
+            if (OpenedImgNumber - 1 >= 0)
             {
-                this.OpenedImgNumber--;
+                OpenedImgNumber--;
             }
-            this.UpdateImage();
+            UpdateImage();
         }
 
         public void SetAdaptiveThresholdConstant(int value) //http://www.learncsharptutorial.com/threadpooling-csharp-example.php
         {
-            if (this.AdaptiveThresholdConstant == value)
+            if (AdaptiveThresholdConstant == value)
             {
                 return;
             }
 
-            this.AdaptiveThresholdConstant = value;
+            AdaptiveThresholdConstant = value;
             //this.loading = True
             //this.signals.image_processing_change.emit(True)
             //ThreadPool.QueueUserWorkItem(this.ImgProcessor);
-            this.ImgProcessor.RunThread();
+            ImgProcessor.RunThread();
         }
 
         public void JumpToImage(int idx)
         {
             //If this is loading return????
-            if (idx < 0 || idx >= this.Files.Count) return;
-            this.OpenedImgNumber = idx;
+            if (idx < 0 || idx >= Files.Count) return;
+            OpenedImgNumber = idx;
             UpdateImage();
         }
 
-        public void DrawCellContour(IInputOutputArray imgToMod,PointF point)
+        public void DrawCellContour(Mat imgToMod,PointF point)
         {
+            /*
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
                 if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
-                InnerDrawMethod(imgToMod,tempVector);
+                //InnerDrawMethod(imgToMod,tempVector);
                 break;
-            }
+            }*/
         }
 
-        private void InnerDrawMethod(IInputOutputArray imgToMod, IInputArray tempVector)
+        public void DrawSelectedCellContourBoxToImageToDisplay(Point point)
         {
+            DrawSelectedCellContourBoxToNewMat(point,this.ImageToDisplay);
+        }
+
+        private void DrawSelectedCellContourBoxToMat(Mat imgToMod, IInputArray tempVector)
+        {
+            var matToReturn = imgToMod.createNewHardCopyFromMat();
+            if (matToReturn.NumberOfChannels < 3)
+            {
+                CvInvoke.CvtColor(matToReturn, matToReturn, ColorConversion.Gray2Bgr);
+            }
+            var boxVecOfVectorPoint = new VectorOfVectorOfPointF();
+            var tempRect = CvInvoke.MinAreaRect(tempVector);
+            var box = CvInvoke.BoxPoints(tempRect);
+            var boxVec = new VectorOfPointF(box);
+            boxVecOfVectorPoint.Push(boxVec);
+            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.convertToVectorOfPoint();
+            CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 114, 251, 255), 3);
+            //return matToReturn;
+            /*
             var tempRect = CvInvoke.MinAreaRect(tempVector);
             var box = CvInvoke.BoxPoints(tempRect);
             var boxVec = new VectorOfPointF(box);
             CvInvoke.DrawContours(imgToMod, boxVec, 0, new MCvScalar(0,0,255),2);
             CvInvoke.PutText(imgToMod, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
                 new Point((int) (10 + box[0].X), (int) (10 + box[0].Y)),
-                Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
+                FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
+            MainWindow.ImageProcessorExaminer.AddImage(imgToMod.createNewHardCopyFromMat(), "DrawSelectedCellContourBoxToMat");
+            */
+
         }
 
-        public Mat DrawCellContourBoxToNewMat(PointF point, Mat imgToMod)
+        public Mat DrawSelectedCellContourBoxToNewEmptyMat(Point point, Mat imgToMimic)
         {
-            if (imgToMod == null) throw new ArgumentNullException(nameof(imgToMod));
-            var returnMat = imgToMod.createNewHardCopyFromMat();
+            if (imgToMimic == null) throw new ArgumentNullException(nameof(imgToMimic));
+            var tempVectorOfPoint = GetContourForGivenPoint(point);
+            var returnMat = imgToMimic.createNewMatLikeThis();
+            DrawSelectedCellContourBoxToMat(returnMat, tempVectorOfPoint);
+            /*
+            var returnMat = imgToMod.createNewMatLikeThis();
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
                 if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
-                InnerDrawMethod(returnMat,tempVector);
+                DrawSelectedCellContourBoxToMat(returnMat,tempVector);
                 break;
             }
             return returnMat;
+            */
+            return returnMat;
         }
 
-        public void DrawAllCellContours()
+        public Mat DrawSelectedCellContourBoxToNewMat(Point point, Mat imgToMod)
+        {
+            if (imgToMod == null) throw new ArgumentNullException(nameof(imgToMod));
+            var tempVectorOfPoint = GetContourForGivenPoint(point);
+            var returnMat = imgToMod.createNewHardCopyFromMat();
+            DrawSelectedCellContourBoxToMat(returnMat, tempVectorOfPoint);
+            /*
+            var returnMat = imgToMod.createNewMatLikeThis();
+            foreach (var contour in Contours.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPoint(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
+                DrawSelectedCellContourBoxToMat(returnMat,tempVector);
+                break;
+            }
+            return returnMat;
+            */
+            return returnMat;
+        }
+
+        private VectorOfPoint GetContourForGivenPoint(Point point)
+        {
+            var tempVectorList = new List<VectorOfPoint>();
+            VectorOfPoint tempVectorOfPoint = null;
+            var contArray = Contours.ToArrayOfArray();
+            foreach (var contour in contArray)
+            {
+                tempVectorOfPoint = new VectorOfPoint(contour);
+                if ((CvInvoke.PointPolygonTest(tempVectorOfPoint, point, true) >= 0))
+                {
+                    tempVectorList.Add(tempVectorOfPoint);
+                }
+            }
+
+            if (tempVectorList.Count > 1) throw new Exception("Point is inside of more than one contour!");
+            if (tempVectorList.Count == 0) throw new Exception("Point is not inside registered contours!");
+            return tempVectorOfPoint;
+        }
+
+        public void DrawAllCellContourSizes()
         {
             foreach (var contour in Contours.ToArrayOfArray())
             {
@@ -285,8 +390,50 @@ namespace ASAP_WPF
                 var boxVec = new VectorOfPointF(box);
                 CvInvoke.PutText(ContourImage, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
                     new Point((int)(10 + boxVec[0].X), (int)(10 + boxVec[0].Y)),
-                    Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
+                    FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
             }
+        }
+
+        public Mat DrawAllCellContourBoundingBoxes(Mat imgToMod)
+        {
+            var matToReturn = imgToMod.createNewHardCopyFromMat();
+            CvInvoke.CvtColor(matToReturn, matToReturn, ColorConversion.Gray2Bgr);
+            var boxVecOfVectorPoint = new VectorOfVectorOfPointF();
+            foreach (var contour in Contours.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPoint(contour);
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var box = CvInvoke.BoxPoints(tempRect);
+                var boxVec = new VectorOfPointF(box);
+                boxVecOfVectorPoint.Push(boxVec);
+            }
+
+            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.convertToVectorOfPoint();
+            CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
+            return matToReturn;
+        }
+
+        public Mat DrawAllCellContourBoundingBoxes()
+        {
+            var matToReturn = ContourImage.createNewMatLikeThis();
+            var boxVecOfVectorPoint = new VectorOfVectorOfPointF();
+            foreach (var contour in Contours.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPoint(contour);
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var box = CvInvoke.BoxPoints(tempRect);
+                var boxVec = new VectorOfPointF(box);
+                boxVecOfVectorPoint.Push(boxVec);
+
+            }
+            //CvInvoke.DrawContours(matToReturn, boxVecOfVectorPoint, 0, new MCvScalar(0, 255, 0, 255), 2);
+            //contourIdx	Parameter indicating a contour to draw. If it is negative, all the contours are drawn.
+            //
+            //var tempMat = boxVecOfVectorPoint.GetInputOutputArray().GetMat();
+
+            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.convertToVectorOfPoint();
+            CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
+            return matToReturn;
         }
 
         //Returns the length of a cell around a point
@@ -308,16 +455,16 @@ namespace ASAP_WPF
             return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector select CvInvoke.MinAreaRect(tempVector) into tempRect select tempRect.Size.Height).Select(dummy => (double) dummy).ToList();
         }
 
-        public List<(PointF, double)> GetAllCellLengthWithCenterPoint()
+        public List<(Point, double)> GetAllCellLengthWithCenterPoint()
         {
             //return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int) cx, (int) cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempRect.Size.Height, tempPoint)).Select(dummy => ((double, PointF)) dummy).ToList();
-            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int)cx, (int)cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempPoint, tempRect.Size.Height)).Select(dummy => ((PointF,double))dummy).ToList();
+            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new Point((int)cx, (int)cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempPoint, tempRect.Size.Height)).Select(dummy => ((Point,double))dummy).ToList();
         }
 
 
-        public void SaveImgWithCountours(PointF point)
+        public void SaveImgWithContours(Point point)
         {
-            var imgToSave = this.Image;
+            var imgToSave = Image;
             foreach (var contour in Contours.ToArrayOfArray())
             {
                 var tempVector = new VectorOfPoint(contour);
@@ -330,21 +477,22 @@ namespace ASAP_WPF
                 {
                     CvInvoke.PutText(ContourImage, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
                         new Point((int) (10 + boxVec[0].X), (int) (10 + boxVec[0].Y)),
-                        Emgu.CV.CvEnum.FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
+                        FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
                 }
             }
 
-            var processedDir = this.FolderName + Path.DirectorySeparatorChar + "processed";
+            var processedDir = FolderName + Path.DirectorySeparatorChar + "processed";
             if (!Directory.Exists(processedDir))
             {
                 Directory.CreateDirectory(processedDir);
             }
 
-            CvInvoke.Imwrite(processedDir + Path.DirectorySeparatorChar + this.OpenedImgNumber + ".jpg", imgToSave);
+            CvInvoke.Imwrite(processedDir + Path.DirectorySeparatorChar + OpenedImgNumber + ".jpg", imgToSave);
         }
 
         public Point ContourCenter(Point point)
         {
+            /*
             var temp = new Point();
             foreach (var contour in Contours.ToArrayOfArray())
             {
@@ -356,13 +504,19 @@ namespace ASAP_WPF
                 temp = new Point((int) cx, (int) cy);
                 break;
             }
+            */
 
-            return temp;
+            var tempVector = GetContourForGivenPoint(point);
+            var moment = CvInvoke.Moments(tempVector);
+            var cx = moment.M10 / moment.M00;
+            var cy = moment.M01 / moment.M00;
+            var tempPoint = new Point((int)cx, (int)cy);
+            return tempPoint;
         }
 
         public string GetCurrentImgPath()
         {
-            return  Path.Combine(this.FolderName, this.ImgName);
+            return  Path.Combine(FolderName, ImgName);
         }
     }
 }

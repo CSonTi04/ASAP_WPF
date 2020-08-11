@@ -26,6 +26,7 @@ namespace ASAP_WPF
         public VectorOfVectorOfPoint Contours { get; set; }
         public VectorOfVectorOfPoint ContoursToReturn { get; set; }
 
+
         public void SetValues(Mat imgMat, int @const)
         {
             this.ImageMat = new Mat();
@@ -134,6 +135,8 @@ namespace ASAP_WPF
                     ContoursToReturn.Push(con);
                     CvInvoke.DrawContours(ContourImageMat, Contours, 0, new MCvScalar(0, 255, 0, 255), 2);
 
+
+                    //TODO na ez így pont nem jó |
                     var rect = CvInvoke.MinAreaRect(con);
                     //var box = CvInvoke.BoxPoints(rect);
                     //VectorOfPointF boxVec = new VectorOfPointF(box);
@@ -147,7 +150,8 @@ namespace ASAP_WPF
                 }
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.createNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
                 //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
-                CvInvoke.PutText(this.ImageMat, "{" + ContoursToReturn.Size + "}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);
+                //CvInvoke.PutText(this.ImageMat, "{" + ContoursToReturn.Size + "}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);
+                //this.DetectedCellCount = ContoursToReturn.Size;
                 MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_PutText");
                 //Ez valyon mikor került ide?
                 //CvInvoke.EqualizeHist(this.ImageMat,this.ImageMat);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -24,6 +25,7 @@ using Emgu.CV.Structure;
 using KeyEventArgs = System.Windows.Forms.KeyEventArgs;
 using ListBox = System.Windows.Forms.ListBox;
 using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
+using Point = System.Drawing.Point;
 
 namespace ASAP_WPF
 {
@@ -35,6 +37,7 @@ namespace ASAP_WPF
 
         //ImageHandler ImageHandler = new ImageHandler();
         private ImageHandler ImageHandler { get; set; }
+
         //https://stackoverflow.com/questions/14262143/wpf-displaying-emgu-image-using-binding
         private Mat ImgToDisplay { get; set; }
         private System.Drawing.Point LastClickedPoint { get; set; }
@@ -50,9 +53,24 @@ namespace ASAP_WPF
 
         private static readonly Regex Regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
 
+        private double SelectedCellLength { get; set; }
+        private Point SelectedCellCenterPoint { get; set; }
+
+        private ImageToDisplay CurrentImageToDisplay { get; set; }
+
+        public enum ImageToDisplay
+        {
+            None,
+            Original,
+            Processed,
+            OriginalWithOverlay,
+            ProcessedWithOverlay
+        }
+
         public MainWindow()
         {
             InitializeComponent();
+            CurrentImageToDisplay = ImageToDisplay.None;
             ImageHandler = new ImageHandler();
             LengthCollector = new LengthCollector();
             EmguImgBox.SizeMode = PictureBoxSizeMode.Zoom;
@@ -71,25 +89,50 @@ namespace ASAP_WPF
             };
         }
 
-        public void UpdateImgBox(bool originIsMousClick)
+        public void UpdateImgBox()
         {
             if (null == ImageHandler.FolderName) return;
             //if(_originIsMousClick) this.ImageHandler.DrawCellContour(this.LastClickedPoint);
 
-            var processedImgBtnBool = this.ProcessedImgBtn.IsChecked;
-            //TODO ezt lecserélni valami szebbre egy ENUMMAL
-            var ogImgBtnBool = this.OgImgBtn.IsChecked;
-            if (ogImgBtnBool != null && (bool)ogImgBtnBool)
-            {
-                ImgToDisplay = ImageHandler.Image;
-            }
-           else if(processedImgBtnBool != null && (bool)processedImgBtnBool)
-            {
-                ImgToDisplay = ImageHandler.ProcessedImage;
-            }
+
+
+
 
             var overlayCbBool = this.OverlayCheckBox.IsChecked;
+            var processedImgBtnBool = this.ProcessedImgBtn.IsChecked;
+            var ogImgBtnBool = this.OgImgBtn.IsChecked;
 
+            if (overlayCbBool != null && (bool) overlayCbBool)
+            {
+                if (ogImgBtnBool != null && (bool) ogImgBtnBool)
+                {
+                    //ImgToDisplay = ImageHandler.OgImgWithContourOverlay;
+                    CurrentImageToDisplay = ImageToDisplay.OriginalWithOverlay;
+                }
+                else if (processedImgBtnBool != null && (bool) processedImgBtnBool)
+                {
+                    //ImgToDisplay = ImageHandler.ProcessedImgWithContourOverlay;
+                    CurrentImageToDisplay = ImageToDisplay.ProcessedWithOverlay;
+                }
+            }
+            else
+            {
+
+                if (ogImgBtnBool != null && (bool) ogImgBtnBool)
+                {
+                    //ImgToDisplay = ImageHandler.Image;
+                    CurrentImageToDisplay = ImageToDisplay.Original;
+                }
+                else if (processedImgBtnBool != null && (bool) processedImgBtnBool)
+                {
+                    //ImgToDisplay = ImageHandler.ProcessedImage;
+                    CurrentImageToDisplay = ImageToDisplay.Processed;
+                }
+            }
+
+            EmguImgBox.Image = ImageHandler.GetImageToDisplay(this.CurrentImageToDisplay);
+
+            /*
             if (null == this.ImageHandler.ImgName || overlayCbBool == null || !(bool) overlayCbBool || !originIsMousClick) return;
             //Mat tempImg = new Mat();
             //Emgu.CV.CvInvoke.Merge();
@@ -108,8 +151,8 @@ namespace ASAP_WPF
             {
                 ImgToDisplay = ImageHandler.ProcessedImgWithContourOverlay;
             }
+            */
 
-            EmguImgBox.Image = ImgToDisplay;
 
         }
 
@@ -128,8 +171,9 @@ namespace ASAP_WPF
             //ImageHandler.DrawCellContour(ImgToDisplay, coordinates);
             //EmguImgBox.Image = ImgToDisplay;
             //ImageHandler.ProcessOverlays(coordinates);
-            UpdateImgBox(true);
+            UpdateImgBox();
         }
+
         private void SwitchImg()
         {
             SwitchRadio();
@@ -150,9 +194,9 @@ namespace ASAP_WPF
             if (folderResult != CommonFileDialogResult.Ok) return;
             textBoxFolderPath.Text = folderDialog.FileName;
             ImageHandler.UpdateFolder(textBoxFolderPath.Text);
-            EmguImgBox.Image = ImageHandler.Image;
-            NumOfPics.Text = ImageHandler.Files.Count.ToString();
-            CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+            ShownImageChanged();
+            UpdateImgBox();
+
         }
 
         private void ShowSettingsWindow(object sender, RoutedEventArgs e)
@@ -180,12 +224,19 @@ namespace ASAP_WPF
             */
             var currImgNumber = ImageHandler.OpenedImgNumber;
             ImageHandler.Process();
-            LengthCollector.Add(currImgNumber,this.LastClickedPoint, ImageHandler.GetCellLength(LastClickedPoint));
+            LengthCollector.Add(currImgNumber, this.LastClickedPoint, ImageHandler.GetCellLength(LastClickedPoint));
             //TODO lehet a lengthcollvetor néha takarítani is kellene :|
             //TempLengthList = LengthCollector.GetLengthList(currImgNumber, SettingsWindow.PPM_Sl.Value);
             TempLengthList = LengthCollector.GetLengthTripletList(currImgNumber, SettingsWindow.PPM_Sl.Value);
             LengthWindow.LengthGrid.ItemsSource = TempLengthList;
             LengthWindow.LengthGrid.Items.Refresh();
+        }
+
+        public void ShownImageChanged()
+        {
+            NumOfPics.Text = ImageHandler.Files.Count.ToString();
+            CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
+            CurrImageDetectedCellCountBox.Text = ImageHandler.DetectedCellCount.ToString();
         }
 
         private void Window_OnKey(object sender, System.Windows.Input.KeyEventArgs e)
@@ -197,21 +248,21 @@ namespace ASAP_WPF
                     //DrawContours();
                     break;
                 case Key.Space:
-                    SwitchImg();
+                    //SwitchImg();
                     //this.LengthCollector.Add();
                     break;
                 case Key.Prior:
                     ImageHandler.NextImage();
-                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox(false);
+                    ShownImageChanged();
+                    UpdateImgBox();
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
                     break;
                 case Key.Next:
                     ImageHandler.PreviousImage();
-                    CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox(false);
+                    ShownImageChanged();
+                    UpdateImgBox();
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -310,7 +361,8 @@ namespace ASAP_WPF
                 case Keys.Prior:
                     ImageHandler.PreviousImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox(false);
+                    ImageProcessorExaminer.Clear();
+                    UpdateImgBox();
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -318,7 +370,8 @@ namespace ASAP_WPF
                 case Keys.Next:
                     ImageHandler.NextImage();
                     CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-                    UpdateImgBox(false);
+                    ImageProcessorExaminer.Clear();
+                    UpdateImgBox();
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -624,8 +677,8 @@ namespace ASAP_WPF
             if (!IsTextAllowed(tempText)) return;
             var idxToJumpTo = int.Parse(tempText);
             ImageHandler.JumpToImage(idxToJumpTo);
-            CurrIdx.Text = ImageHandler.OpenedImgNumber.ToString();
-            EmguImgBox.Image = ImageHandler.Image;
+            ShownImageChanged();
+            UpdateImgBox();
         }
 
 
@@ -650,9 +703,15 @@ namespace ASAP_WPF
         {
             ConvertCoordinates(this.EmguImgBox,out var x0,out var y0,e.X,e.Y);
             this.LastClickedPoint = new System.Drawing.Point(x0,y0);
+            this.SelectedCellLength = this.ImageHandler.GetCellLength(LastClickedPoint);
+            if (this.SelectedCellLength < 0) return;
+            CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
+            CurrCellLengthCoordinates.Text = ImageHandler.ContourCenter(LastClickedPoint).ToString();
+            //ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
+            //UpdateImgBox();
             //this.ImageHandler.Process();
             //this.ImageHandler.DrawCellContour(this.LastClickedPoint);
-            UpdateImgBox(true);
+            //UpdateImgBox();
             //itt még hiányzik valami
         }
 
@@ -713,22 +772,33 @@ namespace ASAP_WPF
 
         private void OgImgBtn_OnChecked(object sender, RoutedEventArgs e)
         {
-            UpdateImgBox(false);
+            UpdateImgBox();
         }
 
         private void ProcessedImgBtn_Checked(object sender, RoutedEventArgs e)
         {
-            UpdateImgBox(false);
+            UpdateImgBox();
         }
 
         private void OverlayCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            UpdateImgBox(false);
+            UpdateImgBox();
         }
 
         private void ExaminerClick(object sender, RoutedEventArgs e)
         {
             ImageProcessorExaminer.Show();
+        }
+
+
+        private void TextBoxFolderPath_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            OpenFolder();
+        }
+
+        private void AddLengthBtn_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }
