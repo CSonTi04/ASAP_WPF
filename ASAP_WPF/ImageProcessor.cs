@@ -25,6 +25,7 @@ namespace ASAP_WPF
         public Mat ContourImageMat { get; set; }
         public VectorOfVectorOfPoint Contours { get; set; }
         public VectorOfVectorOfPoint ContoursToReturn { get; set; }
+        public VectorOfVectorOfPoint BoundingBoxesToReturn{ get; set; }
 
 
         public void SetValues(Mat imgMat, int @const)
@@ -69,8 +70,6 @@ namespace ASAP_WPF
                 // meg kellene nézni miez ez a mat, vactorofvectorpoint és input, output és inoutputarrayek
                 CvInvoke.FindContours(this.ImageMat, Contours, hierarchy, Emgu.CV.CvEnum.RetrType.List, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
 
-
-
                 var dims = Contours.Size;
                 for (var idx = 0; idx < dims; idx++)
                 {
@@ -113,6 +112,9 @@ namespace ASAP_WPF
                 //ContourImageMat = new Mat(this.ImageMat.Rows, this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U, 1);
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.createNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
                 dims = Contours.Size;
+
+                var tempVovoPonitf = new VectorOfVectorOfPointF();
+
                 for (var idx = 0; idx < dims; idx++)
                 {
                     var con = Contours[idx];
@@ -135,7 +137,11 @@ namespace ASAP_WPF
                     ContoursToReturn.Push(con);
                     CvInvoke.DrawContours(ContourImageMat, Contours, 0, new MCvScalar(0, 255, 0, 255), 2);
 
-
+                    var rect = CvInvoke.MinAreaRect(con);
+                    var box = CvInvoke.BoxPoints(rect);
+                    var boxVec = new VectorOfPointF(box);
+                    tempVovoPonitf.Push(boxVec);
+                    /*
                     //TODO na ez így pont nem jó |
                     var rect = CvInvoke.MinAreaRect(con);
                     //var box = CvInvoke.BoxPoints(rect);
@@ -147,7 +153,11 @@ namespace ASAP_WPF
                     //TODO "Azzal még kezdeni valamit"
                     //hossz tenfelyen köszéptől középig
                     //köszépvonalon egy 10 px-es csíkkal végigmenni, és ahol "fekete", az alapján meg lehet a közepe
+                    */
                 }
+
+                this.BoundingBoxesToReturn = tempVovoPonitf.convertToVectorOfPoint();
+
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.createNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
                 //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
                 //CvInvoke.PutText(this.ImageMat, "{" + ContoursToReturn.Size + "}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);

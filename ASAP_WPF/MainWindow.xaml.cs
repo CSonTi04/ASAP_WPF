@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -224,10 +225,10 @@ namespace ASAP_WPF
             */
             var currImgNumber = ImageHandler.OpenedImgNumber;
             ImageHandler.Process();
-            LengthCollector.Add(currImgNumber, this.LastClickedPoint, ImageHandler.GetCellLength(LastClickedPoint));
+            LengthCollector.Add(currImgNumber, this.LastClickedPoint, ImageHandler.GetCellLengthWithBoundingBox(LastClickedPoint));
             //TODO lehet a lengthcollvetor néha takarítani is kellene :|
             //TempLengthList = LengthCollector.GetLengthList(currImgNumber, SettingsWindow.PPM_Sl.Value);
-            TempLengthList = LengthCollector.GetLengthTripletList(currImgNumber, SettingsWindow.PPM_Sl.Value);
+            TempLengthList = LengthCollector.GetLengthTripletList(SettingsWindow.PPM_Sl.Value);
             LengthWindow.LengthGrid.ItemsSource = TempLengthList;
             LengthWindow.LengthGrid.Items.Refresh();
         }
@@ -702,20 +703,21 @@ namespace ASAP_WPF
         private void EmguImgBox_OnClick(object sender, MouseEventArgs e)
         {
             ConvertCoordinates(this.EmguImgBox,out var x0,out var y0,e.X,e.Y);
-            this.LastClickedPoint = new System.Drawing.Point(x0,y0);
-            this.SelectedCellLength = this.ImageHandler.GetCellLength(LastClickedPoint);
+            Debug.WriteLine("Original: " + e.X + "," + e.Y + " Converted: " + x0 + "," + y0 + ", ZoomScale: " + EmguImgBox.ZoomScale);
+            this.LastClickedPoint = new System.Drawing.Point((int)x0,(int)y0);
+            this.SelectedCellLength = this.ImageHandler.GetCellLengthWithBoundingBox(LastClickedPoint);
             if (this.SelectedCellLength < 0) return;
             CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
             CurrCellLengthCoordinates.Text = ImageHandler.ContourCenter(LastClickedPoint).ToString();
-            //ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
-            //UpdateImgBox();
+            ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
+            UpdateImgBox();
             //this.ImageHandler.Process();
             //this.ImageHandler.DrawCellContour(this.LastClickedPoint);
             //UpdateImgBox();
             //itt még hiányzik valami
         }
 
-        public void ConvertCoordinates(ImageBox picBox, out int x0, out int y0, int x, int y)
+        public void ConvertCoordinates(ImageBox picBox, out double x0, out double y0, int x, int y)
         {
             var picHgt = picBox.ClientSize.Height;
             var picWid = picBox.ClientSize.Width;
@@ -723,8 +725,16 @@ namespace ASAP_WPF
             var imgHgt = size.Height;
             var imgWid = size.Width;
 
-            x0 = x;
-            y0 = y;
+            var floatX = (double)x;
+            var floatY = (double)y;
+            var scaledX = floatX /= picBox.ZoomScale;
+            var scaledY = floatY /= picBox.ZoomScale;
+
+            //x0 = x;
+            //y0 = y;
+
+            x0 = scaledX;
+            y0 = scaledY;
             switch (picBox.SizeMode)
             {
                 case PictureBoxSizeMode.AutoSize:
@@ -749,7 +759,7 @@ namespace ASAP_WPF
 
                         // The image fills the height of the PictureBox.
                         // Get its width.
-                        float scaledWidth = imgWid * picHgt / imgHgt;
+                        var scaledWidth = imgWid * picHgt / (float)imgHgt;
                         var dx = (picWid - scaledWidth) / 2;
                         x0 = (int)((x - dx) * imgHgt / (float)picHgt);
                     }
@@ -760,7 +770,7 @@ namespace ASAP_WPF
 
                         // The image fills the height of the PictureBox.
                         // Get its height.
-                        float scaledHeight = imgHgt * picWid / imgWid;
+                        var scaledHeight = imgHgt * picWid / (float)imgWid;
                         var dy = (picHgt - scaledHeight) / 2;
                         y0 = (int)((y - dy) * imgWid / picWid);
                     }
@@ -798,7 +808,8 @@ namespace ASAP_WPF
 
         private void AddLengthBtn_Click(object sender, RoutedEventArgs e)
         {
-
+            var tempLength = ImageHandler.GetCellLengthWithBoundingBox(this.LastClickedPoint);
+            this.LengthCollector.Add(ImageHandler.OpenedImgNumber,this.LastClickedPoint,tempLength);
         }
     }
 }

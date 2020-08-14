@@ -21,14 +21,27 @@ namespace ASAP_WPF
 
         public bool ContainsKey(int imgNumber)
         {
-            return lengthDictionary.ContainsKey(imgNumber);
+            return lengthDictionary.ContainsKey(imgNumber) && positionDictionary.ContainsKey(imgNumber);
         }
 
         public void Add(int imgNumber, Point point, double length)
         {
             //var tempTuple = (_length, _point);
-            this.lengthDictionary.Add(imgNumber, length);
-            this.positionDictionary.Add(imgNumber,point);
+
+
+            if (!ContainsKey(imgNumber))
+            {
+                this.lengthDictionary.Add(imgNumber, length);
+                this.positionDictionary.Add(imgNumber, point);
+            }
+            else
+            {
+                this.lengthDictionary.Remove(imgNumber);
+                this.positionDictionary.Remove(imgNumber);
+                this.lengthDictionary.Add(imgNumber, length);
+                this.positionDictionary.Add(imgNumber, point);
+            }
+
             /*
             if (lengthDictionary.ContainsKey(_imgNumber))
             {
@@ -92,9 +105,11 @@ namespace ASAP_WPF
                return lengthDictionary.Select(innerDictValue => (_imgNumber, innerDictValue, innerDictValue / _pixelPerMicroMeter)).ToList();
         }
         */
-        public List<LengthTriplet> GetLengthTripletList(int imgNumnber, double pixelPerMicroMeter)
+        public List<LengthTriplet> GetLengthTripletList(double pixelPerMicroMeter)
         {
-            return lengthDictionary.Select(entry => new LengthTriplet(imgNumnber, entry.Value, entry.Value / pixelPerMicroMeter)).ToList();
+            //return lengthDictionary.Select(entry => new LengthTriplet(imgNumnber, entry.Value, entry.Value / pixelPerMicroMeter)).ToList();
+
+            return lengthDictionary.Select(entry => new LengthTriplet(entry.Key, entry.Value, entry.Value / pixelPerMicroMeter)).ToList();
         }
 
 
@@ -105,13 +120,13 @@ namespace ASAP_WPF
         }
 
 
-        public void ExportToCsv(string path,int imgNumber, double pixelPerMicroMeter)
+        public void ExportToCsv(string path, double pixelPerMicroMeter)
         {
             var fileName = "ASAP_EXPORT_" + DateTime.Now;
             using var writer = new StreamWriter(path + Path.DirectorySeparatorChar + fileName);
             using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
             writer.WriteLine("img_number;length_in_px;length_in_um");
-            csv.WriteRecords(GetLengthTripletList(imgNumber, pixelPerMicroMeter));
+            csv.WriteRecords(GetLengthTripletList(pixelPerMicroMeter));
         }
     }
 }
