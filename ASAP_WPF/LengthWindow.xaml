@@ -8,6 +8,15 @@
         Title="Length Window" Height="800" Width="450"
         Closing="Window_Closing">
     <Grid>
-        <DataGrid Name="LengthGrid"  DockPanel.Dock="Right"  ItemsSource="{Binding TempLengthList }" ColumnWidth="Auto"/>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="19*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <DataGrid x:Name="LengthGrid"  DockPanel.Dock="Right"  ItemsSource="{Binding TempLengthList }" ColumnWidth="Auto" Grid.Column="0" Grid.Row="0"/>
+        <Button x:Name="ExportLengthBtn" Content="Export lengths"  Grid.Column="0" Grid.Row="1" Click="ExportLengthBtn_Click"/>
+
     </Grid>
 </Window>

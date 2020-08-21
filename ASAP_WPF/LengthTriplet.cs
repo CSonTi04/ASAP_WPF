@@ -1,6 +1,6 @@
 ﻿namespace ASAP_WPF
 {
-    internal class LengthTriplet
+    public class LengthTriplet
     {
         public int ImageNumber { get; set; }
         public double HeightInPixel { get; set; }

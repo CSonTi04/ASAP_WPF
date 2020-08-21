@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace ASAP_WPF
 {
@@ -27,6 +28,15 @@ namespace ASAP_WPF
         {
             e.Cancel = true;
             this.Hide();
+        }
+
+        private void ExportLengthBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var folderDialog = new CommonOpenFileDialog { IsFolderPicker = true };
+            var folderResult = folderDialog.ShowDialog();
+            if (folderResult != CommonFileDialogResult.Ok) return;
+            var path  = folderDialog.FileName;
+            MainWindow.LengthCollector.ExportToCsv(path, MainWindow.SettingsWindow.PPM_Sl.Value);
         }
     }
 }

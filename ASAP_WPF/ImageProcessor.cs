@@ -56,14 +56,14 @@ namespace ASAP_WPF
                 //Using input | output arrays instead of temp objects
                 CvInvoke.GaussianBlur(this.ImageMat, this.ImageMat, tempSize, 0);
 
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_GaussianBlur");
+                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_GaussianBlur");
                 //Adaptive threshold
                 var tempAdaptiveThreshold = this.AdaptiveThresholdConstant;
                 //Azt az 59-et majd meg kell lesni, hogy miért az van
 
 
                 CvInvoke.AdaptiveThreshold(this.ImageMat, this.ImageMat, 255, Emgu.CV.CvEnum.AdaptiveThresholdType.MeanC, Emgu.CV.CvEnum.ThresholdType.BinaryInv, 59, this.AdaptiveThresholdConstant);
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_AdaptiveThreshold");
+                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_AdaptiveThreshold");
                 //Get contours and remove small patches
                 Contours = new VectorOfVectorOfPoint();
                 Mat hierarchy = new Mat();
@@ -77,10 +77,11 @@ namespace ASAP_WPF
                     if (!(CvInvoke.ContourArea(con) < 800)) continue;
                     var color = new MCvScalar(0, 0, 0);
                     //CvInvoke.FillPoly(this.ImageMat, con, color);
+                    //TODO ezt lehet meg kellene még vizsgálni
                     CvInvoke.FillConvexPoly(this.ImageMat, con, color);
                 }
 
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_FillConvexPoly");
+                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_FillConvexPoly");
                 //Open then close to close gaps
                 var kernelMat1 = CvInvoke.GetStructuringElement(Emgu.CV.CvEnum.ElementShape.Rectangle, new Size(3, 3), new Point(-1, -1));
                 CvInvoke.MorphologyEx(
@@ -91,7 +92,7 @@ namespace ASAP_WPF
                     new Point(-1, -1),
                     1, Emgu.CV.CvEnum.BorderType.Default,
                     new MCvScalar());
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_MorphologyEx_Open");
+                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_MorphologyEx_Open");
                 var kernelMat2 = CvInvoke.GetStructuringElement(Emgu.CV.CvEnum.ElementShape.Rectangle, new Size(7, 7), new Point(-1, -1));
                 CvInvoke.MorphologyEx(
                     this.ImageMat,
@@ -102,7 +103,7 @@ namespace ASAP_WPF
                     2,
                     Emgu.CV.CvEnum.BorderType.Default,
                     new MCvScalar());
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_MorphologyEx_Close");
+                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_MorphologyEx_Close");
                 //Get new contours find the correct ones by size and hierarchy draw them onto the img, draw bounding box, and length
                 CvInvoke.FindContours(this.ImageMat, Contours, hierarchy, Emgu.CV.CvEnum.RetrType.Tree, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
                 //Empty out objects contours
@@ -110,7 +111,7 @@ namespace ASAP_WPF
                 //Image to be overlayed, with alpha values
                 ContourImageMat = new Mat(this.ImageMat.Rows, this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U, 4);
                 //ContourImageMat = new Mat(this.ImageMat.Rows, this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U, 1);
-                MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.createNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
+                MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
                 dims = Contours.Size;
 
                 var tempVovoPonitf = new VectorOfVectorOfPointF();
@@ -156,13 +157,13 @@ namespace ASAP_WPF
                     */
                 }
 
-                this.BoundingBoxesToReturn = tempVovoPonitf.convertToVectorOfPoint();
+                this.BoundingBoxesToReturn = tempVovoPonitf.ConvertToVectorOfPoint();
 
-                MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.createNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
+                MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
                 //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
                 //CvInvoke.PutText(this.ImageMat, "{" + ContoursToReturn.Size + "}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);
                 //this.DetectedCellCount = ContoursToReturn.Size;
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.createNewHardCopyFromMat(), "ImageProcessor_PutText");
+                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_PutText");
                 //Ez valyon mikor került ide?
                 //CvInvoke.EqualizeHist(this.ImageMat,this.ImageMat);
                 //itt kellene visszaadni a szálat!

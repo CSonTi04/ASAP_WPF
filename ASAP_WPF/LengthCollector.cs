@@ -8,7 +8,7 @@ using CsvHelper;
 
 namespace ASAP_WPF
 {
-    class LengthCollector
+    public class LengthCollector
     {
         //TODO a programnak automatikusan kellene beállítani a mikrométerskálás dolgot a pontossághoz, erről meg kellene krédezni a Martint
         //Ezt át kellene szabni, úgy, hogy mondjuk egy dictionary egy dictionaryben - ez végül nem egy jó megoldás, mert ugye képenként megyünk nem sejtenként
@@ -19,7 +19,7 @@ namespace ASAP_WPF
         //Lehet ez az osztódás után trackeléshez kellet
 
 
-        public bool ContainsKey(int imgNumber)
+        private bool ContainsKey(int imgNumber)
         {
             return lengthDictionary.ContainsKey(imgNumber) && positionDictionary.ContainsKey(imgNumber);
         }
@@ -122,10 +122,15 @@ namespace ASAP_WPF
 
         public void ExportToCsv(string path, double pixelPerMicroMeter)
         {
-            var fileName = "ASAP_EXPORT_" + DateTime.Now;
-            using var writer = new StreamWriter(path + Path.DirectorySeparatorChar + fileName);
+            var fileName = "ASAP_EXPORT_" + DateTime.Now.ToString(CultureInfo.InvariantCulture);
+            fileName = fileName.Replace('.', '_');
+            fileName = fileName.Replace(':', '_');
+            fileName = fileName.Replace('/', '_');
+            fileName = fileName.Replace(' ', '_');
+            fileName += ".csv";
+            using var writer = new StreamWriter( Path.Combine(path, fileName));
             using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
-            writer.WriteLine("img_number;length_in_px;length_in_um");
+            writer.WriteLine("img_number,length_in_px,length_in_um");
             csv.WriteRecords(GetLengthTripletList(pixelPerMicroMeter));
         }
     }

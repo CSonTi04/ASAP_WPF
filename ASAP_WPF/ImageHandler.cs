@@ -29,6 +29,7 @@ namespace ASAP_WPF
         //public Mat BoxedImage { get; set; }
         public Mat ProcessedImgWithContourOverlay { get; set; }
         public Mat OgImgWithContourOverlay { get; set; }
+        public Mat ImageToDisplayModifiedByMouseClick { get; set; }
         public Mat ImageToDisplay { get; set; }
         /*
         public enum ModTypeEnum
@@ -124,6 +125,7 @@ namespace ASAP_WPF
                 MainWindow.ImageToDisplay.Processed => ProcessedImage,
                 MainWindow.ImageToDisplay.OriginalWithOverlay => OgImgWithContourOverlay,
                 MainWindow.ImageToDisplay.ProcessedWithOverlay => ProcessedImgWithContourOverlay,
+                MainWindow.ImageToDisplay.PictureModifiedByClick => ImageToDisplayModifiedByMouseClick,
                 _ => throw new ArgumentOutOfRangeException(nameof(ImgToDisplayEnum), ImgToDisplayEnum, null)
             };
             return ImageToDisplay;
@@ -142,9 +144,9 @@ namespace ASAP_WPF
             Boxes.Push(ImgProcessor.BoundingBoxesToReturn);
             DetectedCellCount = Contours.Size;
             //BoxedImage = DrawAllCellContourBoundingBoxes();
-            MainWindow.ImageProcessorExaminer.AddImage(Image.createNewHardCopyFromMat(), "ImageHandler_Image");
-            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage.createNewHardCopyFromMat(), "ImageHandler_ProcessedImage");
-            MainWindow.ImageProcessorExaminer.AddImage(ContourImage.createNewHardCopyFromMat(), "ImageHandler_ContourImage");
+            MainWindow.ImageProcessorExaminer.AddImage(Image.CreateNewHardCopyFromMat(), "ImageHandler_Image");
+            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage.CreateNewHardCopyFromMat(), "ImageHandler_ProcessedImage");
+            MainWindow.ImageProcessorExaminer.AddImage(ContourImage.CreateNewHardCopyFromMat(), "ImageHandler_ContourImage");
             //MainWindow.ImageProcessorExaminer.AddImage(BoxedImage.createNewHardCopyFromMat(), "ImageHandler_BoxedImage");
             ProcessOverlays();
         }
@@ -167,16 +169,16 @@ namespace ASAP_WPF
             //MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
 
             ProcessedImgWithContourOverlay = DrawAllCellContourBoundingBoxes(ProcessedImage);
-            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
+            MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.CreateNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
             OgImgWithContourOverlay = DrawAllCellContourBoundingBoxes(Image);
-            MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
+            MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.CreateNewHardCopyFromMat(), "OgImgWithContourOverlay");
         }
 
         public Mat OverlayImageMats(Mat paramObscuredImgMat, Mat paramOverlayedImgMat)
         {
 
-            var obscuredImgMat = paramObscuredImgMat.createNewHardCopyFromMat();
-            var overlayImgMat = paramOverlayedImgMat.createNewHardCopyFromMat();
+            var obscuredImgMat = paramObscuredImgMat.CreateNewHardCopyFromMat();
+            var overlayImgMat = paramOverlayedImgMat.CreateNewHardCopyFromMat();
             var matToReturn = new Mat();
             try
             {
@@ -193,7 +195,7 @@ namespace ASAP_WPF
                 }
                 else
                 {
-                    tempImgMat = overlayImgMat.createNewHardCopyFromMat();
+                    tempImgMat = overlayImgMat.CreateNewHardCopyFromMat();
                 }
                 //new PopupImage(tempImgMat, "tempImgMat").Show();
                 //new PopupImage(alpha, "alpha").Show();
@@ -294,12 +296,12 @@ namespace ASAP_WPF
 
         public void DrawSelectedCellContourBoxToImageToDisplay(Point point)
         {
-            DrawSelectedCellContourBoxToNewMat(point,this.ImageToDisplay);
+            this.ImageToDisplayModifiedByMouseClick = DrawSelectedCellContourBoxToNewMat(point,this.ImageToDisplay);
         }
 
         private void DrawSelectedCellContourBoxToMat(Mat imgToMod, VectorOfPoint tempVector)
         {
-            var matToReturn = imgToMod.createNewHardCopyFromMat();
+            var matToReturn = imgToMod.CreateNewHardCopyFromMat();
             if (matToReturn.NumberOfChannels < 3)
             {
                 CvInvoke.CvtColor(matToReturn, matToReturn, ColorConversion.Gray2Bgr);
@@ -311,9 +313,9 @@ namespace ASAP_WPF
             var box = CvInvoke.BoxPoints(tempRect);
             var boxVec = new VectorOfPointF(box);
             boxVecOfVectorPoint.Push(boxVec);
-            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.convertToVectorOfPoint();
+            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.ConvertToVectorOfPoint();
 
-            CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 114, 251, 255), 3);
+            CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 114, 251, 0), 3);
             //CvInvoke.DrawContours(matToReturn, tempVector, -1, new MCvScalar(0, 114, 251, 255), 3);
             //return matToReturn;
             /*
@@ -333,7 +335,7 @@ namespace ASAP_WPF
         {
             if (imgToMimic == null) throw new ArgumentNullException(nameof(imgToMimic));
             var tempVectorOfPoint = GetContourForGivenPoint(point);
-            var returnMat = imgToMimic.createNewMatLikeThis();
+            var returnMat = imgToMimic.CreateNewMatLikeThis();
             DrawSelectedCellContourBoxToMat(returnMat, tempVectorOfPoint);
             /*
             var returnMat = imgToMod.createNewMatLikeThis();
@@ -354,8 +356,9 @@ namespace ASAP_WPF
             if (imgToMod == null) throw new ArgumentNullException(nameof(imgToMod));
             //var tempVectorOfPoint = GetContourForGivenPoint(point);
             var tempVectorOfPoint = GetBoundingBox(point);
-            var returnMat = imgToMod.createNewHardCopyFromMat();
+            var returnMat = imgToMod.CreateNewHardCopyFromMat();
             DrawSelectedCellContourBoxToMat(returnMat, tempVectorOfPoint);
+            MainWindow.ImageProcessorExaminer.AddImage(returnMat.CreateNewHardCopyFromMat(), "DrawSelectedCellContourBoxToNewMat");
             /*
             var returnMat = imgToMod.createNewMatLikeThis();
             foreach (var contour in Contours.ToArrayOfArray())
@@ -405,7 +408,7 @@ namespace ASAP_WPF
 
         public Mat DrawAllCellContourBoundingBoxes(Mat imgToMod)
         {
-            var matToReturn = imgToMod.createNewHardCopyFromMat();
+            var matToReturn = imgToMod.CreateNewHardCopyFromMat();
             CvInvoke.CvtColor(matToReturn, matToReturn, ColorConversion.Gray2Bgr);
             var boxVecOfVectorPoint = new VectorOfVectorOfPointF();
             foreach (var contour in Contours.ToArrayOfArray())
@@ -417,14 +420,14 @@ namespace ASAP_WPF
                 boxVecOfVectorPoint.Push(boxVec);
             }
 
-            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.convertToVectorOfPoint();
+            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.ConvertToVectorOfPoint();
             CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
             return matToReturn;
         }
 
         public Mat DrawAllCellContourBoundingBoxes()
         {
-            var matToReturn = ContourImage.createNewMatLikeThis();
+            var matToReturn = ContourImage.CreateNewMatLikeThis();
             var boxVecOfVectorPoint = new VectorOfVectorOfPointF();
             foreach (var contour in Contours.ToArrayOfArray())
             {
@@ -440,7 +443,7 @@ namespace ASAP_WPF
             //
             //var tempMat = boxVecOfVectorPoint.GetInputOutputArray().GetMat();
 
-            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.convertToVectorOfPoint();
+            var convertedVectorOfVectorPoint = boxVecOfVectorPoint.ConvertToVectorOfPoint();
             CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
             return matToReturn;
         }
