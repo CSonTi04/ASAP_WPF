@@ -42,8 +42,20 @@ namespace ASAP_WPF
             return vectorToReturn;
         }
 
-        public static Mat RotateMatWithoutCutoff(this Mat matToRotate, double angle)
+        public static Mat RotateMatWithoutCutoff(this Mat matToRotate, RotatedRect boundingRectangle)
         {
+            //https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
+            //var tempRectangle = boundingRectangle.MinAreaRect();
+            var height = matToRotate.Height;
+            var width = matToRotate.Width;
+            var center = new Point(width / 2, height / 2);
+            //var rotatingMat = matToRotate.CreateNewMatLikeThis();
+            //CvInvoke.GetRotationMatrix2D(center, boundingRectangle.Angle, 1.0, rotatingMat);
+            //var roiBoundingRectangle = new RotatedRect(center,new SizeF(width,height),boundingRectangle.Angle).MinAreaRect();
+
+
+            //rotatingMat.GetData().
+
             var matToReturn = matToRotate.CreateNewHardCopyFromMat();
             //TODO befelyezni :|
             //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
