@@ -141,7 +141,7 @@ namespace ASAP_WPF
             ProcessedImage = ImgProcessor.ImageMat;
             ContourImage = ImgProcessor.ContourImageMat;
             Contours.Push(ImgProcessor.ContoursToReturn);
-            Boxes.Push(ImgProcessor.BoundingBoxesToReturn);
+            Boxes.Push(ImgProcessor.AngledBoundingBoxesToReturn);
             DetectedCellCount = Contours.Size;
             //BoxedImage = DrawAllCellContourBoundingBoxes();
             MainWindow.ImageProcessorExaminer.AddImage(Image.CreateNewHardCopyFromMat(), "ImageHandler_Image");

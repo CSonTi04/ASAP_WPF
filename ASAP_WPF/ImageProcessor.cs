@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Windows;
+using System.Windows.Documents;
 using Emgu.CV;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
@@ -25,7 +28,10 @@ namespace ASAP_WPF
         public Mat ContourImageMat { get; set; }
         public VectorOfVectorOfPoint Contours { get; set; }
         public VectorOfVectorOfPoint ContoursToReturn { get; set; }
-        public VectorOfVectorOfPoint BoundingBoxesToReturn{ get; set; }
+        public VectorOfVectorOfPoint AngledBoundingBoxesToReturn{ get; set; }
+        //public List<Rectangle> UprightBoundingRectangles { get; set; }
+
+        public Dictionary<VectorOfPoint, double> CellLengths { get; set; }
 
 
         public void SetValues(Mat imgMat, int @const)
@@ -136,6 +142,7 @@ namespace ASAP_WPF
                         continue;
                     }
                     ContoursToReturn.Push(con);
+                    //UprightBoundingRectangles.Add(CvInvoke.BoundingRectangle(con));
                     CvInvoke.DrawContours(ContourImageMat, Contours, 0, new MCvScalar(0, 255, 0, 255), 2);
 
                     var rect = CvInvoke.MinAreaRect(con);
@@ -157,7 +164,7 @@ namespace ASAP_WPF
                     */
                 }
 
-                this.BoundingBoxesToReturn = tempVovoPonitf.ConvertToVectorOfPoint();
+                this.AngledBoundingBoxesToReturn = tempVovoPonitf.ConvertToVectorOfPoint();
 
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
                 //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
@@ -185,7 +192,24 @@ namespace ASAP_WPF
             CvInvoke.Imwrite(exportPath, this.ImageMat);
         }
 
-
-
+        private void CalculateCellLengths(VectorOfPoint contour)
+        {
+            var roiRectangle = CvInvoke.BoundingRectangle(contour);
+            //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
+            var roiMat = new Mat(this.ContourImageMat, roiRectangle);
+            var tempRect = CvInvoke.MinAreaRect(contour);
+            var rotatedRoiMat = roiMat.RotateMatWithoutCutoff(tempRect);
+            var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
+            var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            if (!CellLengths.ContainsKey(contour))
+            {
+                CellLengths.Add(contour, sizeInPx);
+            }
+            else
+            {
+                CellLengths.Remove(contour);
+                CellLengths.Add(contour, sizeInPx);
+            }
+        }
     }
 }

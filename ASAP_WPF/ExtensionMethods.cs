@@ -42,23 +42,53 @@ namespace ASAP_WPF
             return vectorToReturn;
         }
 
-        public static Mat RotateMatWithoutCutoff(this Mat matToRotate, RotatedRect boundingRectangle)
-        {
+
+        public static Mat RotateMatWithoutCutoff(this Mat uprightBondingRectangleMat, RotatedRect angledBoundingRectangle)
+        {//https://docs.opencv.org/master/da/d0c/tutorial_bounding_rects_circles.html
+            //az upright kell majd nekünk :D jeeeee
+
+
+
             //https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
             //var tempRectangle = boundingRectangle.MinAreaRect();
-            var height = matToRotate.Height;
-            var width = matToRotate.Width;
-            var center = new Point(width / 2, height / 2);
-            //var rotatingMat = matToRotate.CreateNewMatLikeThis();
-            //CvInvoke.GetRotationMatrix2D(center, boundingRectangle.Angle, 1.0, rotatingMat);
+            var height = uprightBondingRectangleMat.Height;
+            var width = uprightBondingRectangleMat.Width;
+            var center = new PointF((float)(width / 2.0), (float)(height / 2.0));
+            //var temp = CvInvoke.BoundingRectangle(angledBoundingRectangle.MinAreaRect())
+            //az angle -- The angle of the box in degrees. Possitive value means counter-clock wise rotation
+
+
+            var rotatingMat = new Mat();
+            double desiredAngleOfRotation;
+
+            if (angledBoundingRectangle.Angle < 0)
+            {
+                desiredAngleOfRotation = angledBoundingRectangle.Angle < 90 ?  Math.Abs(0 - angledBoundingRectangle.Angle) :  Math.Abs(180 - angledBoundingRectangle.Angle);
+            }
+            else
+            {
+                desiredAngleOfRotation = angledBoundingRectangle.Angle < -90 ? Math.Abs(0 - angledBoundingRectangle.Angle) : Math.Abs(180 - angledBoundingRectangle.Angle);
+            }
+
+            CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
+
+            //Ez fölösleges, ha tényleg upright az a rectangle !
+            //var tempFirst = (double)rotatingMat.GetData().GetValue(0,2) + uprightBondingRectangleMat.Width / 2.0 - uprightBondingRectangleMat.Cols / 2.0;
+            //var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - uprightBondingRectangleMat.Height / 2.0; ;
+            //rotatingMat.GetData().SetValue(tempFirst,0, 2);
+            //rotatingMat.GetData().SetValue(tempSecond, 1, 2);
+
+
             //var roiBoundingRectangle = new RotatedRect(center,new SizeF(width,height),boundingRectangle.Angle).MinAreaRect();
 
 
             //rotatingMat.GetData().
 
-            var matToReturn = matToRotate.CreateNewHardCopyFromMat();
+            var matToReturn = new Mat();
             //TODO befelyezni :|
             //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
+            CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, uprightBondingRectangleMat.Size);
+
             return matToReturn;
         }
 
@@ -79,6 +109,17 @@ namespace ASAP_WPF
             //roiMat = roiMat(roiRectangle);
 
             var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(roiMat, 5);
+            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindow(biggestAreaWindow, 1);
+            var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
+
+            return (tempA, tempB);
+        }
+
+        public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat uprightBondingRectangleMat)
+        {
+            var tempA = new Point(0);
+            var tempB = new Point(0);
+            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(uprightBondingRectangleMat, 5);
             var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindow(biggestAreaWindow, 1);
             var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
 
