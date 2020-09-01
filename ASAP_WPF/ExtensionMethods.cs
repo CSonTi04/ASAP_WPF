@@ -15,6 +15,9 @@ namespace ASAP_WPF
 {
     internal static class ExtensionMethods
     {
+        private static byte WHITE_PIXEL = 255;
+        private static byte BLACK_PIXEL = 0;
+
         public static Mat CreateNewHardCopyFromMat(this Mat matToHardCopy)
         {
             var returnMat = new Mat(matToHardCopy.Rows, matToHardCopy.Cols, matToHardCopy.Depth, matToHardCopy.NumberOfChannels);
@@ -73,10 +76,10 @@ namespace ASAP_WPF
             CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
 
             //Ez fölösleges, ha tényleg upright az a rectangle !
-            //var tempFirst = (double)rotatingMat.GetData().GetValue(0,2) + uprightBondingRectangleMat.Width / 2.0 - uprightBondingRectangleMat.Cols / 2.0;
-            //var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - uprightBondingRectangleMat.Height / 2.0; ;
-            //rotatingMat.GetData().SetValue(tempFirst,0, 2);
-            //rotatingMat.GetData().SetValue(tempSecond, 1, 2);
+            var tempFirst = (double)rotatingMat.GetData().GetValue(0,2) + uprightBondingRectangleMat.Width / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
+            var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - angledBoundingRectangle.Size.Height / 2.0; ;
+            rotatingMat.GetData().SetValue(tempFirst,0, 2);
+            rotatingMat.GetData().SetValue(tempSecond, 1, 2);
 
 
             //var roiBoundingRectangle = new RotatedRect(center,new SizeF(width,height),boundingRectangle.Angle).MinAreaRect();
@@ -115,15 +118,31 @@ namespace ASAP_WPF
             return (tempA, tempB);
         }
 
-        public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat uprightBondingRectangleMat)
+        //public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat uprightBondingRectangleMat)
+        public static int GetWidestSliceOfCellLengthInPX(this Mat uprightBondingRectangleMat)
         {
-            var tempA = new Point(0);
-            var tempB = new Point(0);
+            //var tempA = new Point(0);
+            //var tempB = new Point(0);
+
+            var counter = 0;
+
+            for(var colIdx = 0; colIdx < uprightBondingRectangleMat.Cols; colIdx++)
+            {
+                for (var rowIdx = 0; rowIdx < uprightBondingRectangleMat.Cols; rowIdx++)
+                {
+                    var tempValue = (byte)uprightBondingRectangleMat.GetData().GetValue(colIdx, rowIdx);
+                    if (0 == tempValue) counter++;
+                }
+            }
+            if(counter == uprightBondingRectangleMat.Rows * uprightBondingRectangleMat.Cols) throw new Exception("All pixels of roi are the same color, something is wrong!");
+
             var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(uprightBondingRectangleMat, 5);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(), "GetPointsOfWidestSliceOfCell_biggestAreaWindow");
             var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindow(biggestAreaWindow, 1);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(), "GetPointsOfWidestSliceOfCell_biggestAreaRow");
             var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
 
-            return (tempA, tempB);
+            return secondOffset - firstOffset;
         }
 
         /*public static Mat GetWidestSliceOfCell(this Mat matToMeasure)
@@ -146,13 +165,13 @@ namespace ASAP_WPF
             var tempRow = matToMeasure.Row(0);
             for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
             {
-                var tempValue = (int)tempRow.GetData().GetValue(0, colIdx, 0);
-                if (0 != tempValue) continue;
+                var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
+                if (WHITE_PIXEL != tempValue) continue;
                 if (!firstWhiteFound) firstWhiteFound = true;
                 firstSlice.Add(colIdx);
                 if (!firstWhiteFound) continue;
-                if (!firstBlackAfterFirstSlice && 255 == tempValue) firstBlackAfterFirstSlice = true;
-                if(firstBlackAfterFirstSlice && 0 == tempValue) secondSlice.Add(colIdx);
+                if (!firstBlackAfterFirstSlice && BLACK_PIXEL == tempValue) firstBlackAfterFirstSlice = true;
+                if(firstBlackAfterFirstSlice && WHITE_PIXEL == tempValue) secondSlice.Add(colIdx);
             }
             return (firstSlice[firstSlice.Count / 2], secondSlice[secondSlice.Count / 2]);
         }
@@ -231,7 +250,7 @@ namespace ASAP_WPF
 
             var prevPixelVal = -1;
 
-            if(matToMeasure.Dims > 1) throw new Exception("Given matrix does not contain a greyscale picture!");
+            if(matToMeasure.NumberOfChannels > 1) throw new Exception("Given matrix does not contain a greyscale picture!");
             //var tempArray = matToMeasure.Data;
             /*
             for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
@@ -251,15 +270,16 @@ namespace ASAP_WPF
                 var tempRow = matToMeasure.Row(rowIdx);
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
-                    var tempValue = (int)tempRow.GetData().GetValue(0, colIdx, 0);
-                    if ( colIdx > 0) prevPixelVal = (int)tempRow.GetData().GetValue(0, colIdx-1, 0);
+                    //var tempObject = tempRow.GetData().GetValue(0, colIdx);
+                    var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
+                    if ( colIdx > 0) prevPixelVal = (byte)tempRow.GetData().GetValue(0, colIdx-1);
 
                     //Helyette inkább majd http://www.emgu.com/wiki/files/3.1.0/document/html/1293f167-1f50-82a2-14f0-5cbd3fff67a4.htm
-                    if (0 != tempValue || tempValue != 255) throw new Exception("Given image in the matrix has no proper threshold applied!");
-                    if (!foundFirstWhitePixelInFrontOfCell && 0 == tempValue) foundFirstWhitePixelInFrontOfCell = true;
-                    if (foundFirstWhitePixelInFrontOfCell && 255 == tempValue && 0 == prevPixelVal) foundLastWhitePixelInFrontOfCell = true;
-                    if (255 == prevPixelVal && 0 == tempValue) foundLastBlackPixelOfCell = true;
-                    if (!foundLastBlackPixelOfCell && foundLastWhitePixelInFrontOfCell && 255 == tempValue) counter++;
+                    if (!(BLACK_PIXEL < tempValue || tempValue < WHITE_PIXEL)) throw new Exception("Given image in the matrix has no proper threshold applied!");
+                    if (!foundFirstWhitePixelInFrontOfCell && WHITE_PIXEL == tempValue) foundFirstWhitePixelInFrontOfCell = true;
+                    if (foundFirstWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal) foundLastWhitePixelInFrontOfCell = true;
+                    if (BLACK_PIXEL == prevPixelVal && WHITE_PIXEL == tempValue) foundLastBlackPixelOfCell = true;
+                    if (!foundLastBlackPixelOfCell && foundLastWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue) counter++;
 
                 }
             }

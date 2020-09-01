@@ -335,6 +335,10 @@ namespace ASAP_WPF
             CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
             CurrCellLengthCoordinates.Text = ImageHandler.ContourCenter(LastClickedPoint).ToString();
             //ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
+
+            var contour = this.ImageHandler.GetContour(this.LastClickedPoint);
+            ImageHandler.ImgProcessor.CalculateCellLength(contour);
+
             UpdateImgBox(true);
             //this.ImageHandler.Process();
             //this.ImageHandler.DrawCellContour(this.LastClickedPoint);

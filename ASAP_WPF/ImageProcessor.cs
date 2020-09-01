@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows;
 using System.Windows.Documents;
 using Emgu.CV;
+using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Point = System.Drawing.Point;
@@ -197,10 +198,12 @@ namespace ASAP_WPF
             var roiRectangle = CvInvoke.BoundingRectangle(contour);
             //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
             var roiMat = new Mat(this.ContourImageMat, roiRectangle);
+            CvInvoke.CvtColor(roiMat,roiMat,ColorConversion.Bgra2Gray);
             var tempRect = CvInvoke.MinAreaRect(contour);
             var rotatedRoiMat = roiMat.RotateMatWithoutCutoff(tempRect);
-            var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
-            var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
+            //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
             if (!CellLengths.ContainsKey(contour))
             {
                 CellLengths.Add(contour, sizeInPx);
@@ -210,6 +213,22 @@ namespace ASAP_WPF
                 CellLengths.Remove(contour);
                 CellLengths.Add(contour, sizeInPx);
             }
+        }
+
+        public double CalculateCellLength(VectorOfPoint contour)
+        {
+            var roiRectangle = CvInvoke.BoundingRectangle(contour);
+            //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
+            var roiMat = new Mat(this.ContourImageMat, roiRectangle);
+            CvInvoke.CvtColor(roiMat, roiMat, ColorConversion.Bgra2Gray);
+            MainWindow.ImageProcessorExaminer.AddImage(roiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_roiMat");
+            var tempRect = CvInvoke.MinAreaRect(contour);
+            var rotatedRoiMat = roiMat.RotateMatWithoutCutoff(tempRect);
+            MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMat");
+            //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
+            //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
+            return sizeInPx;
         }
     }
 }
