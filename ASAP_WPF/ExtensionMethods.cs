@@ -45,6 +45,20 @@ namespace ASAP_WPF
             return vectorToReturn;
         }
 
+        public static VectorOfVectorOfPointF ConvertToVectorOfPoint(this VectorOfVectorOfPoint vectorToTransform)
+        {
+            var vectorToReturn = new VectorOfVectorOfPointF();
+            var vectorArrayOfArray = vectorToTransform.ToArrayOfArray();
+            foreach (var vector in vectorArrayOfArray)
+            {
+                var temp = new VectorOfPointF();
+                var pointList = vector.Select(point => new PointF((int)point.X, (int)point.Y)).ToList();
+                temp.Push(pointList.ToArray());
+                vectorToReturn.Push(temp);
+            }
+            return vectorToReturn;
+        }
+
 
         public static Mat RotateMatWithoutCutoff(this Mat uprightBondingRectangleMat, RotatedRect angledBoundingRectangle)
         {//https://docs.opencv.org/master/da/d0c/tutorial_bounding_rects_circles.html

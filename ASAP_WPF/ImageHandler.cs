@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Point = System.Drawing.Point;
+using Size = System.Drawing.Size;
 
 namespace ASAP_WPF
 {
@@ -31,6 +34,8 @@ namespace ASAP_WPF
         public Mat OgImgWithContourOverlay { get; set; }
         public Mat ImageToDisplayModifiedByMouseClick { get; set; }
         public Mat ImageToDisplay { get; set; }
+
+        public string[] AllowedFileExtensions = new[] {".jpg", ".tif"};
         /*
         public enum ModTypeEnum
         {
@@ -237,7 +242,8 @@ namespace ASAP_WPF
             }
 
             FolderName = path;
-            Files = new List<string>(Directory.GetFiles(path, "*.jpg")).OrderBy(q => q).ToList();
+            //Files = new List<string>(Directory.GetFiles(path, "*.jpg")).OrderBy(q => q).ToList();
+            Files = new List<string>(Directory.GetFiles(path).Where(file => AllowedFileExtensions.Any(file.ToLower().EndsWith))).OrderBy(q => q).ToList();
             OpenedImgNumber = 0;
             UpdateImage();
         }
@@ -448,6 +454,22 @@ namespace ASAP_WPF
             return matToReturn;
         }
 
+        public void PrintAllTypeOfCellLengthToDebug(Point point)
+        {
+            //var msg = "";
+            //msg.Concat("Contour: ").Concat(GetCellLengthWithContour(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
+            //msg.Concat("BoundingBox: ").Concat(GetCellLengthWithBoundingBox(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
+            //msg.Concat("BoundingBoxPoint: ").Concat(GetCellLengthWithBoundingBoxPoint(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
+            //msg.Concat("EnclosingCircle: ").Concat(GetCellLengthWithEnclosingCircle(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
+            //Debug.WriteLine(msg);
+            var msg = new StringBuilder("");
+            msg.Append("Contour: ").Append(GetCellLengthWithContour(point).ToString(CultureInfo.InvariantCulture)).Append(Environment.NewLine);
+            msg.Append("BoundingBox: ").Append(GetCellLengthWithBoundingBox(point).ToString(CultureInfo.InvariantCulture)).Append(Environment.NewLine);
+            msg.Append("BoundingBoxPoint: ").Append(GetCellLengthWithBoundingBoxPoint(point).ToString(CultureInfo.InvariantCulture)).Append(Environment.NewLine);
+            msg.Append("EnclosingCircle: ").Append(GetCellLengthWithEnclosingCircle(point).ToString(CultureInfo.InvariantCulture)).Append(Environment.NewLine);
+            Debug.WriteLine(msg.ToString());
+        }
+
         //Returns the length of a cell around a point
         public double GetCellLengthWithContour(Point point)
         {
@@ -456,7 +478,7 @@ namespace ASAP_WPF
                 var tempVector = new VectorOfPoint(contour);
                 if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
-                CvInvoke.BoxPoints(tempRect);
+                //CvInvoke.BoxPoints(tempRect);
                 return tempRect.Size.Height;
             }
             return -1.0;
@@ -469,10 +491,62 @@ namespace ASAP_WPF
                 var tempVector = new VectorOfPoint(contour);
                 if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
-                CvInvoke.BoxPoints(tempRect);
+                //var boxPoints = CvInvoke.BoxPoints(tempRect);
                 return tempRect.Size.Height;
             }
             return -1.0;
+        }
+
+        public double GetCellLengthWithBoundingBoxPoint(Point point)
+        {
+            foreach (var contour in Boxes.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPoint(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
+                var tempRect = CvInvoke.MinAreaRect(tempVector);
+                var boxPoints = CvInvoke.BoxPoints(tempRect);
+                return GetCellLengthFromBoxPoints(boxPoints);
+            }
+            return -1.0;
+        }
+
+        public double GetCellLengthWithEnclosingCircle(Point point)
+        {
+            var tempVectorOfVector = Contours.ConvertToVectorOfPoint();
+            foreach (var contour in tempVectorOfVector.ToArrayOfArray())
+            {
+                var tempVector = new VectorOfPointF(contour);
+                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
+                var tempCircle = CvInvoke.MinEnclosingCircle(contour);
+                return tempCircle.Radius * 2.0;
+            }
+            return -1.0;
+        }
+
+        public double GetCellLengthFromBoxPoints(PointF[] boxPoints)
+        {
+            var length = -1.0;
+            var lengthSet = new SortedSet<double>();
+            var listOfPoint = new List<PointF>(boxPoints);
+            //var cartesianListOfPointPairs = new List<(PointF,PointF)>();
+            var crossJoinedListOfPointPairs = from x in listOfPoint from y in listOfPoint select new  { x, y };
+
+            foreach (var currentDistance in crossJoinedListOfPointPairs.ToList().Select(pair => CalculateDistance(pair.x,pair.y)))
+            {
+                lengthSet.Add(currentDistance);
+            }
+
+            length = lengthSet.ToList()[2];
+            return length;
+        }
+
+        private static double CalculateDistance(PointF a, PointF b)
+        {
+            var distance = -1.0;
+
+            distance = Math.Sqrt(Math.Pow(b.X - a.X, 2) + Math.Pow(b.Y - a.Y, 2));
+
+            return distance;
         }
 
         public VectorOfPoint GetBoundingBox(Point point)
