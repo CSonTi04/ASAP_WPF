@@ -529,9 +529,14 @@ namespace ASAP_WPF
             var lengthSet = new SortedSet<double>();
             var listOfPoint = new List<PointF>(boxPoints);
             //var cartesianListOfPointPairs = new List<(PointF,PointF)>();
-            var crossJoinedListOfPointPairs = from x in listOfPoint from y in listOfPoint select new  { x, y };
+            //var crossJoinedListOfPointPairs = from x in listOfPoint from y in listOfPoint select new  { x, y };
 
-            foreach (var currentDistance in crossJoinedListOfPointPairs.ToList().Select(pair => CalculateDistance(pair.x,pair.y)))
+            //foreach (var currentDistance in crossJoinedListOfPointPairs.ToList().Select(pair => CalculateDistance(pair.x,pair.y)))
+            //{
+                //lengthSet.Add(currentDistance);
+            //}
+
+            foreach (var currentDistance in listOfPoint.Select(currentPoint => CalculateDistance(listOfPoint[0], currentPoint)))
             {
                 lengthSet.Add(currentDistance);
             }

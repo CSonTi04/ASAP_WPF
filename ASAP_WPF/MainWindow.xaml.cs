@@ -351,22 +351,34 @@ namespace ASAP_WPF
 
         public void ConvertCoordinates(ImageBox picBox, out double x0, out double y0, int x, int y)
         {
+            Debug.WriteLine("Coordinates_");
+            Debug.WriteLine("X: " + x);
+            Debug.WriteLine("Y: " + y);
+            Debug.WriteLine("");
             var picHgt = picBox.ClientSize.Height;
             var picWid = picBox.ClientSize.Width;
             var size = picBox.Image.GetInputArray().GetSize();
+            //var temp = picBox.HorizontalScrollBar.va
             var imgHgt = size.Height;
             var imgWid = size.Width;
 
-            var floatX = (double)x;
-            var floatY = (double)y;
-            var scaledX = floatX /= picBox.ZoomScale;
-            var scaledY = floatY /= picBox.ZoomScale;
+            var floatX = (double) x + picBox.HorizontalScrollBar.Value;
+            var floatY = (double) y + picBox.VerticalScrollBar.Value;
+            Debug.WriteLine("X offset: " + picBox.HorizontalScrollBar.Value);
+            Debug.WriteLine("Y offset: " + picBox.VerticalScrollBar.Value);
+            //var scaledX = floatX /= picBox.ZoomScale;
+            //var scaledY = floatY /= picBox.ZoomScale;
+
+            //var scaledX = floatX *= picBox.ZoomScale;
+            //var scaledY = floatY *= picBox.ZoomScale;
+
+
 
             //x0 = x;
             //y0 = y;
 
-            x0 = scaledX;
-            y0 = scaledY;
+            x0 = floatX;
+            y0 = floatX;
             switch (picBox.SizeMode)
             {
                 case PictureBoxSizeMode.AutoSize:
@@ -374,18 +386,31 @@ namespace ASAP_WPF
                     // These are okay. Leave them alone.
                     break;
                 case PictureBoxSizeMode.CenterImage:
+                    Debug.WriteLine("CenterImage");
                     x0 = x - (picWid - imgWid) / 2;
                     y0 = y - (picHgt - imgHgt) / 2;
+                    //x0 = x0 *= picBox.ZoomScale;
+                    //y0 = y0 *= picBox.ZoomScale;
+                    Debug.WriteLine("X: " + x0);
+                    Debug.WriteLine("Y: " + y0);
+                    Debug.WriteLine("");
                     break;
                 case PictureBoxSizeMode.StretchImage:
+                    Debug.WriteLine("StretchImage");
                     x0 = (int)(imgWid * x / (float)picWid);
                     y0 = (int)(imgHgt * y / (float)picHgt);
+                    //x0 = x0 *= picBox.ZoomScale;
+                    //y0 = y0 *= picBox.ZoomScale;
+                    Debug.WriteLine("X: " + x0);
+                    Debug.WriteLine("Y: " + y0);
+                    Debug.WriteLine("");
                     break;
                 case PictureBoxSizeMode.Zoom:
                     var picAspect = picWid / (float)picHgt;
                     var imgAspect = imgWid / (float)imgHgt;
                     if (picAspect > imgAspect)
                     {
+                        Debug.WriteLine("Zoom, picAspect > imgAspect");
                         // The PictureBox is wider/shorter than the image.
                         y0 = (int)(imgHgt * y / (float)picHgt);
 
@@ -393,10 +418,19 @@ namespace ASAP_WPF
                         // Get its width.
                         var scaledWidth = imgWid * picHgt / (float)imgHgt;
                         var dx = (picWid - scaledWidth) / 2;
+                        //
+                        Debug.WriteLine("Dx: " + dx);
                         x0 = (int)((x - dx) * imgHgt / (float)picHgt);
+
+                        //x0 = x0 *= picBox.ZoomScale;
+                        //y0 = y0 *= picBox.ZoomScale;
+                        Debug.WriteLine("X: " + x0);
+                        Debug.WriteLine("Y: " + y0);
+                        Debug.WriteLine("");
                     }
                     else
                     {
+                        Debug.WriteLine("Zoom, picAspect < imgAspect");
                         // The PictureBox is taller/thinner than the image.
                         x0 = (int)(imgWid * x / (float)picWid);
 
@@ -404,7 +438,14 @@ namespace ASAP_WPF
                         // Get its height.
                         var scaledHeight = imgHgt * picWid / (float)imgWid;
                         var dy = (picHgt - scaledHeight) / 2;
+                        Debug.WriteLine("Dy: " + dy);
                         y0 = (int)((y - dy) * imgWid / picWid);
+
+                        //x0 = x0 *= picBox.ZoomScale;
+                        //y0 = y0 *= picBox.ZoomScale;
+                        Debug.WriteLine("X: " + x0);
+                        Debug.WriteLine("Y: " + y0);
+                        Debug.WriteLine("");
                     }
                     break;
                 default:
