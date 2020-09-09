@@ -349,50 +349,24 @@ namespace ASAP_WPF
             //itt még hiányzik valami
         }
 
-        public void ConvertCoordinates(ImageBox picBox, out double x0, out double y0, int x, int y)
+        public void ConvertCoordinates(ImageBox picBox, out double x0, out double y0, double x, double y)
         {
-            Debug.WriteLine("Coordinates_");
-            Debug.WriteLine("X: " + x);
-            Debug.WriteLine("Y: " + y);
-            Debug.WriteLine("");
+            x = (x / picBox.ZoomScale);
+            y = (y / picBox.ZoomScale);
 
-            x = (int) (x / picBox.ZoomScale);
-            y = (int) (y / picBox.ZoomScale);
 
             var picHgt = picBox.ClientSize.Height / picBox.ZoomScale;
             var picWid = picBox.ClientSize.Width / picBox.ZoomScale;
             var size = picBox.Image.GetInputArray().GetSize();
-            //var temp = picBox.HorizontalScrollBar.va
             var imgHgt = size.Height / picBox.ZoomScale;
             var imgWid = size.Width / picBox.ZoomScale;
 
-            var floatX = (double) x + picBox.HorizontalScrollBar.Value;
-            var floatY = (double) y + picBox.VerticalScrollBar.Value;
-            Debug.WriteLine("X offset: " + picBox.HorizontalScrollBar.Value);
-            Debug.WriteLine("Y offset: " + picBox.VerticalScrollBar.Value);
-            //var scaledX = floatX /= picBox.ZoomScale;
-            //var scaledY = floatY /= picBox.ZoomScale;
-
-            //var scaledX = floatX *= picBox.ZoomScale;
-            //var scaledY = floatY *= picBox.ZoomScale;
+            var floatX = x + picBox.HorizontalScrollBar.Value;
+            var floatY = y + picBox.VerticalScrollBar.Value;
 
 
-
-            //x0 = x;
-            //y0 = y;
-
-            //x0 = x - picBox.HorizontalScrollBar.Value / picBox.ZoomScale;
-            //y0 = y - picBox.VerticalScrollBar.Value / picBox.ZoomScale;
-
-            //x0 = x  / picBox.ZoomScale - picBox.HorizontalScrollBar.Value ;
-            //y0 = y  / picBox.ZoomScale - picBox.VerticalScrollBar.Value ;
-
-            //
-            //Debug.WriteLine("X: " + x0);
-            //Debug.WriteLine("Y: " + y0);
-
-            x0 = floatX;
-            y0 = floatX;
+            x0 = -1;
+            y0 = -1;
             switch (picBox.SizeMode)
             {
                 case PictureBoxSizeMode.AutoSize:
@@ -400,66 +374,38 @@ namespace ASAP_WPF
                     // These are okay. Leave them alone.
                     break;
                 case PictureBoxSizeMode.CenterImage:
-                    Debug.WriteLine("CenterImage");
-                    x0 = x - (picWid - imgWid) / 2;
-                    y0 = y - (picHgt - imgHgt) / 2;
-                    //x0 = x0 /= picBox.ZoomScale;
-                    //y0 = y0 /= picBox.ZoomScale;
-                    Debug.WriteLine("X: " + x0);
-                    Debug.WriteLine("Y: " + y0);
-                    Debug.WriteLine("");
+                    x0 = x + picBox.HorizontalScrollBar.Value - (picWid - imgWid) / 2;
+                    y0 = y + picBox.VerticalScrollBar.Value  - (picHgt - imgHgt) / 2;
                     break;
                 case PictureBoxSizeMode.StretchImage:
-                    Debug.WriteLine("StretchImage");
-                    x0 = (int)(imgWid * x / (float)picWid);
-                    y0 = (int)(imgHgt * y / (float)picHgt);
-                    //x0 = x0 /= picBox.ZoomScale;
-                    //y0 = y0 /= picBox.ZoomScale;
-                    Debug.WriteLine("X: " + x0);
-                    Debug.WriteLine("Y: " + y0);
-                    Debug.WriteLine("");
+                    x0 = (int)(imgWid * (x + picBox.HorizontalScrollBar.Value) / (float)picWid);
+                    y0 = (int)(imgHgt * (y + picBox.VerticalScrollBar.Value)  / (float)picHgt);
                     break;
                 case PictureBoxSizeMode.Zoom:
                     var picAspect = picWid / (float)picHgt;
                     var imgAspect = imgWid / (float)imgHgt;
                     if (picAspect > imgAspect)
                     {
-                        Debug.WriteLine("Zoom, picAspect > imgAspect");
                         // The PictureBox is wider/shorter than the image.
-                        y0 = (int)(imgHgt * y / (float)picHgt);
+                        y0 = (int)(imgHgt * (y + picBox.VerticalScrollBar.Value) / (float)picHgt);
 
                         // The image fills the height of the PictureBox.
                         // Get its width.
                         var scaledWidth = imgWid * picHgt / (float)imgHgt;
-                        var dx = (picWid - scaledWidth) / 2 * picBox.ZoomScale; ;
-                        //
-                        Debug.WriteLine("Dx: " + dx);
-                        x0 = (int)((x - dx) * imgHgt / (float)picHgt);
-
-                        //x0 = x0 /= picBox.ZoomScale;
-                        //y0 = y0 /= picBox.ZoomScale;
-                        Debug.WriteLine("X: " + x0);
-                        Debug.WriteLine("Y: " + y0);
-                        Debug.WriteLine("");
+                        var dx = (picWid - scaledWidth) / 2 * picBox.ZoomScale;
+                        x0 = (int)(((x + picBox.HorizontalScrollBar.Value) - dx) * imgHgt / (float)picHgt);
                     }
                     else
                     {
                         Debug.WriteLine("Zoom, picAspect < imgAspect");
                         // The PictureBox is taller/thinner than the image.
-                        x0 = (int)(imgWid * x / (float)picWid);
+                        x0 = (int)(imgWid * (x + picBox.HorizontalScrollBar.Value) / (float)picWid);
 
                         // The image fills the height of the PictureBox.
                         // Get its height.
                         var scaledHeight = imgHgt * picWid / (float)imgWid;
-                        var dy = (picHgt - scaledHeight) / 2 * picBox.ZoomScale; ;
-                        Debug.WriteLine("Dy: " + dy);
-                        y0 = (int)((y - dy) * imgWid / picWid);
-
-                        //x0 = x0 /= picBox.ZoomScale;
-                        //y0 = y0 /= picBox.ZoomScale;
-                        Debug.WriteLine("X: " + x0);
-                        Debug.WriteLine("Y: " + y0);
-                        Debug.WriteLine("");
+                        var dy = (picHgt - scaledHeight) / 2 * picBox.ZoomScale;
+                        y0 = (int)(((y + picBox.VerticalScrollBar.Value) - dy) * imgWid / (float)picWid);
                     }
                     break;
                 default:
