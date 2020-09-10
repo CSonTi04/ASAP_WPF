@@ -23,6 +23,7 @@ using System.Windows.Forms;
 using CsvHelper.Configuration.Attributes;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using Emgu.CV.Util;
 using KeyEventArgs = System.Windows.Forms.KeyEventArgs;
 using ListBox = System.Windows.Forms.ListBox;
 using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
@@ -42,6 +43,7 @@ namespace ASAP_WPF
         //https://stackoverflow.com/questions/14262143/wpf-displaying-emgu-image-using-binding
         private Mat ImgToDisplay { get; set; }
         private System.Drawing.Point LastClickedPoint { get; set; }
+        private VectorOfPoint LastSelectedContour { get; set; }
         public static LengthCollector LengthCollector { get; set; }
         private bool Switch { get; set; }
         public static SettingsWindow SettingsWindow { get; set; }
@@ -136,7 +138,7 @@ namespace ASAP_WPF
             }
             else
             {
-                ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
+                ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.GetContourCenterPoint(LastClickedPoint));
                 CurrentImageToDisplay = ImageToDisplay.PictureModifiedByClick;
             }
 
@@ -266,6 +268,7 @@ namespace ASAP_WPF
                     ImageHandler.NextImage();
                     ShownImageChanged();
                     UpdateImgBox(false);
+                    LookForSameContourWithinNewPicture();
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -274,6 +277,7 @@ namespace ASAP_WPF
                     ImageHandler.PreviousImage();
                     ShownImageChanged();
                     UpdateImgBox(false);
+                    LookForSameContourWithinNewPicture();
                     //EmguImgBox.Image = ImageHandler.Image;
                     //ImageHandler.Process();
                     //EmguImgBox.Image = ImageHandler.ProcessedImage;
@@ -330,13 +334,8 @@ namespace ASAP_WPF
             ConvertCoordinates(this.EmguImgBox,out var x0,out var y0,e.X,e.Y);
             Debug.WriteLine("Original: " + e.X + "," + e.Y + " Converted: " + x0 + "," + y0 + ", ZoomScale: " + EmguImgBox.ZoomScale);
             this.LastClickedPoint = new System.Drawing.Point((int)x0,(int)y0);
-            this.SelectedCellLength = this.ImageHandler.GetCellLengthWithBoundingBox(LastClickedPoint);
-            if (this.SelectedCellLength < 0) return;
-            CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
-            //CurrCellLengthCoordinates.Text = ImageHandler.ContourCenter(LastClickedPoint).ToString();
-            CurrCellLengthCoordinates.Text = LastClickedPoint.ToString();
-
-            ImageHandler.PrintAllTypeOfCellLengthToDebug(LastClickedPoint);
+            this.LastSelectedContour = this.ImageHandler.GetContour(LastClickedPoint);
+            SetLengthProperties();
             //ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
 
             var contour = this.ImageHandler.GetContour(this.LastClickedPoint);
@@ -441,8 +440,29 @@ namespace ASAP_WPF
 
         private void AddLengthBtn_Click(object sender, RoutedEventArgs e)
         {
-            var tempLength = ImageHandler.GetCellLengthWithBoundingBox(this.LastClickedPoint);
-            LengthCollector.Add(ImageHandler.OpenedImgNumber,this.LastClickedPoint,tempLength);
+            var tempLength = ImageHandler.GetCellLengthWithBoundingBoxPoint(LastSelectedContour);
+            LengthCollector.Add(ImageHandler.OpenedImgNumber, this.LastClickedPoint, tempLength);
+        }
+
+        private void SetLengthProperties()
+        {
+            this.SelectedCellLength = this.ImageHandler.GetCellLengthWithBoundingBox(LastClickedPoint);
+            if (this.SelectedCellLength < 0) return;
+            CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
+            //CurrCellLengthCoordinates.Text = ImageHandler.ContourCenter(LastClickedPoint).ToString();
+            CurrCellLengthCoordinates.Text = LastClickedPoint.ToString();
+
+            ImageHandler.PrintAllTypeOfCellLengthToDebug(LastClickedPoint);
+        }
+
+        private void LookForSameContourWithinNewPicture()
+        {
+            var newContourCenter = LastSelectedContour;
+            var lastSelectedContourCenterPoint = ImageHandler.GetContourCenterPoint(newContourCenter);
+            var newContour = ImageHandler.GetContour(lastSelectedContourCenterPoint);
+            if (null == newContour) return;
+            this.LastSelectedContour = newContour;
+            SetLengthProperties();
         }
     }
 }

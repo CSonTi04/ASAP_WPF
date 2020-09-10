@@ -470,6 +470,7 @@ namespace ASAP_WPF
             Debug.WriteLine(msg.ToString());
         }
 
+
         //Returns the length of a cell around a point
         public double GetCellLengthWithContour(Point point)
         {
@@ -508,6 +509,13 @@ namespace ASAP_WPF
                 return GetCellLengthFromBoxPoints(boxPoints);
             }
             return -1.0;
+        }
+
+        public double GetCellLengthWithBoundingBoxPoint(VectorOfPoint contour)
+        {
+            var tempRect = CvInvoke.MinAreaRect(contour);
+            var boxPoints = CvInvoke.BoxPoints(tempRect);
+            return GetCellLengthFromBoxPoints(boxPoints);
         }
 
         public double GetCellLengthWithEnclosingCircle(Point point)
@@ -622,7 +630,7 @@ namespace ASAP_WPF
             CvInvoke.Imwrite(processedDir + Path.DirectorySeparatorChar + OpenedImgNumber + ".jpg", imgToSave);
         }
 
-        public Point ContourCenter(Point point)
+        public Point GetContourCenterPoint(Point point)
         {
             /*
             var temp = new Point();
@@ -640,6 +648,15 @@ namespace ASAP_WPF
 
             var tempVector = GetContourForGivenPoint(point);
             var moment = CvInvoke.Moments(tempVector);
+            var cx = moment.M10 / moment.M00;
+            var cy = moment.M01 / moment.M00;
+            var tempPoint = new Point((int)cx, (int)cy);
+            return tempPoint;
+        }
+
+        public Point GetContourCenterPoint(VectorOfPoint contour)
+        {;
+            var moment = CvInvoke.Moments(contour);
             var cx = moment.M10 / moment.M00;
             var cy = moment.M01 / moment.M00;
             var tempPoint = new Point((int)cx, (int)cy);
