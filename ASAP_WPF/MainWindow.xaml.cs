@@ -24,6 +24,7 @@ using CsvHelper.Configuration.Attributes;
 using Emgu.CV;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
+using Brushes = System.Windows.Media.Brushes;
 using KeyEventArgs = System.Windows.Forms.KeyEventArgs;
 using ListBox = System.Windows.Forms.ListBox;
 using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
@@ -442,15 +443,19 @@ namespace ASAP_WPF
         {
             var tempLength = ImageHandler.GetCellLengthWithBoundingBoxPoint(LastSelectedContour);
             LengthCollector.Add(ImageHandler.OpenedImgNumber, this.LastClickedPoint, tempLength);
+            CurrCellLengthBox.Background = Brushes.LawnGreen;
+            CurrCellLengthCoordinates.Background = Brushes.LawnGreen;
         }
 
         private void SetLengthProperties()
         {
+            VoidLengthProperties();
             this.SelectedCellLength = this.ImageHandler.GetCellLengthWithBoundingBox(LastClickedPoint);
             if (this.SelectedCellLength < 0) return;
             CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
-            //CurrCellLengthCoordinates.Text = ImageHandler.ContourCenter(LastClickedPoint).ToString();
+            CurrCellLengthBox.Background = Brushes.Orange;
             CurrCellLengthCoordinates.Text = LastClickedPoint.ToString();
+            CurrCellLengthCoordinates.Background = Brushes.Orange;
 
             ImageHandler.PrintAllTypeOfCellLengthToDebug(LastClickedPoint);
         }
@@ -459,10 +464,21 @@ namespace ASAP_WPF
         {
             var newContourCenter = LastSelectedContour;
             var lastSelectedContourCenterPoint = ImageHandler.GetContourCenterPoint(newContourCenter);
-            var newContour = ImageHandler.GetContour(lastSelectedContourCenterPoint);
-            if (null == newContour) return;
-            this.LastSelectedContour = newContour;
+            this.LastClickedPoint = lastSelectedContourCenterPoint;
+            var newlyFoundContour = ImageHandler.GetContour(lastSelectedContourCenterPoint);
+            if (null == newlyFoundContour) return;
+            this.LastSelectedContour = newlyFoundContour;
             SetLengthProperties();
+        }
+
+        private void VoidLengthProperties()
+        {
+            //TODO inkább adatkötéssel kellene
+            this.SelectedCellLength = double.MinValue;
+            CurrCellLengthBox.Text = "";
+            CurrCellLengthBox.Background = Brushes.IndianRed;
+            CurrCellLengthCoordinates.Text = "";
+            CurrCellLengthCoordinates.Background = Brushes.IndianRed;
         }
     }
 }
