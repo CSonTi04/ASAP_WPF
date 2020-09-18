@@ -41,8 +41,8 @@
                 <TextBlock TextWrapping="Wrap" RenderTransformOrigin="-1,0.562" Width="110" Text="Selected cell length:"></TextBlock>
                 <TextBox x:Name="CurrCellLengthBox" TextWrapping="Wrap" Text="" Width="200" IsReadOnly="True"/>
                 <TextBlock TextWrapping="Wrap" RenderTransformOrigin="-1,0.562" Width="135" Text="Selected cell coordinates:"/>
-                <TextBox x:Name="CurrCellLengthCoordinates" TextWrapping="Wrap" Text="" Width="200" IsReadOnly="True"/>
-                <Button x:Name="AddLengthBtn" Content="Add length" Width="75" Click="AddLengthBtn_Click"/>
+                <TextBox x:Name="CurrCellLengthCoordinates" TextWrapping="Wrap" Text="" Width="200" IsReadOnly="True" />
+                <Button x:Name="AddLengthBtn" Content="Add length" Width="75" Click="AddLengthBtn_Click" />
 
             </Menu>
             <WindowsFormsHost>

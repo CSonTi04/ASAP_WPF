@@ -35,6 +35,8 @@ namespace ASAP_WPF
         public Mat ImageToDisplayModifiedByMouseClick { get; set; }
         public Mat ImageToDisplay { get; set; }
 
+        public Dictionary<VectorOfPoint, double> CellLengths { get; set; }
+
         public string[] AllowedFileExtensions = new[] {".jpg", ".tif"};
         /*
         public enum ModTypeEnum
@@ -666,6 +668,63 @@ namespace ASAP_WPF
         public string GetCurrentImgPath()
         {
             return  Path.Combine(FolderName, ImgName);
+        }
+
+
+        private void CalculateCellLengths(VectorOfPoint contour)
+        {
+            var roiRectangle = CvInvoke.BoundingRectangle(contour);
+            //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
+            var roiMat = new Mat(this.ContourImage, roiRectangle);
+            CvInvoke.CvtColor(roiMat, roiMat, ColorConversion.Bgra2Gray);
+            var tempRect = CvInvoke.MinAreaRect(contour);
+            var rotatedRoiMat = roiMat.RotateMatWithoutCutoff(tempRect);
+            //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
+            //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
+            if (!CellLengths.ContainsKey(contour))
+            {
+                CellLengths.Add(contour, sizeInPx);
+            }
+            else
+            {
+                CellLengths.Remove(contour);
+                CellLengths.Add(contour, sizeInPx);
+            }
+        }
+
+        public double CalculateCellLength(VectorOfPoint contour)
+        {
+            const double roiUpScale = 1.2;
+            //TODO hierarchia kihasználása, hogy a nagyobb kontúr meg legyen, ne a doboz növelésével
+            var roiRectangle = CvInvoke.BoundingRectangle(contour);
+            var ogSize = roiRectangle.Size;
+            var ogPoint = roiRectangle.Location;
+            var newSize = new Size((int) (ogSize.Width * roiUpScale) , (int)(ogSize.Height * roiUpScale));
+
+            var diffWidth = newSize.Width - ogSize.Width;
+            var diffHeight = newSize.Height - ogSize.Height;
+            var newPoint = new Point(ogPoint.X - diffWidth / 2, ogPoint.Y - diffHeight / 2);
+            var newRoiRectangle = new Rectangle(newPoint,newSize);
+            //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
+            var roiMat = new Mat(this.ProcessedImage, roiRectangle);
+            var newRoiMat = new Mat(this.ProcessedImage,newRoiRectangle);
+            if (roiMat.NumberOfChannels > 1)
+            {
+                CvInvoke.CvtColor(roiMat, roiMat, ColorConversion.Bgra2Gray);
+            }
+            MainWindow.ImageProcessorExaminer.AddImage(roiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_roiMat");
+            MainWindow.ImageProcessorExaminer.AddImage(newRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_newRoiMat");
+            var pixelNum = CvInvoke.CountNonZero(roiMat);
+            if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
+            var tempRect = CvInvoke.MinAreaRect(contour);
+            var rotatedRoiMat = newRoiMat.RotateMatWithoutCutoff(tempRect);
+            MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMat");
+            ////var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
+            ////var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            //var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
+            var sizeInPx = - 1;
+            return sizeInPx;
         }
     }
 }

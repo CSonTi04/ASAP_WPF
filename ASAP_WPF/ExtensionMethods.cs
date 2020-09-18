@@ -70,10 +70,12 @@ namespace ASAP_WPF
             //var tempRectangle = boundingRectangle.MinAreaRect();
             var height = uprightBondingRectangleMat.Height;
             var width = uprightBondingRectangleMat.Width;
-            var center = new PointF((float)(width / 2.0), (float)(height / 2.0));
+            //var center = new PointF((float)(width / 2.0), (float)(height / 2.0));
+            var center = angledBoundingRectangle.Center;
             //var temp = CvInvoke.BoundingRectangle(angledBoundingRectangle.MinAreaRect())
             //az angle -- The angle of the box in degrees. Possitive value means counter-clock wise rotation
 
+            //Itt az angle az
 
             var rotatingMat = new Mat();
             double desiredAngleOfRotation;
@@ -138,7 +140,7 @@ namespace ASAP_WPF
             //var tempA = new Point(0);
             //var tempB = new Point(0);
 
-            var counter = 0;
+            /*var counter = 0;
 
             for(var colIdx = 0; colIdx < uprightBondingRectangleMat.Cols; colIdx++)
             {
@@ -148,7 +150,10 @@ namespace ASAP_WPF
                     if (0 == tempValue) counter++;
                 }
             }
-            if(counter == uprightBondingRectangleMat.Rows * uprightBondingRectangleMat.Cols) throw new Exception("All pixels of roi are the same color, something is wrong!");
+            if(counter == uprightBondingRectangleMat.Rows * uprightBondingRectangleMat.Cols) throw new Exception("All pixels of roi are the same color, something is wrong!");*/
+
+            var pixelNum = CvInvoke.CountNonZero(uprightBondingRectangleMat);
+            if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
 
             var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(uprightBondingRectangleMat, 5);
             MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(), "GetPointsOfWidestSliceOfCell_biggestAreaWindow");

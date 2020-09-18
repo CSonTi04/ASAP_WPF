@@ -339,8 +339,8 @@ namespace ASAP_WPF
             SetLengthProperties();
             //ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
 
-            var contour = this.ImageHandler.GetContour(this.LastClickedPoint);
-            //ImageHandler.ImgProcessor.CalculateCellLength(contour);
+            //var contour = this.ImageHandler.GetContour(this.LastClickedPoint);
+            ImageHandler.CalculateCellLength(LastSelectedContour);
 
             UpdateImgBox(true);
             //this.ImageHandler.Process();
@@ -351,8 +351,8 @@ namespace ASAP_WPF
 
         public void ConvertCoordinates(ImageBox picBox, out double x0, out double y0, double x, double y)
         {
-            x = (x / picBox.ZoomScale);
-            y = (y / picBox.ZoomScale);
+            x /= picBox.ZoomScale;
+            y /= picBox.ZoomScale;
 
 
             var picHgt = picBox.ClientSize.Height / picBox.ZoomScale;
