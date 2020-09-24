@@ -656,14 +656,7 @@ namespace ASAP_WPF
             return tempPoint;
         }
 
-        public Point GetContourCenterPoint(VectorOfPoint contour)
-        {;
-            var moment = CvInvoke.Moments(contour);
-            var cx = moment.M10 / moment.M00;
-            var cy = moment.M01 / moment.M00;
-            var tempPoint = new Point((int)cx, (int)cy);
-            return tempPoint;
-        }
+        
 
         public string GetCurrentImgPath()
         {
@@ -673,6 +666,8 @@ namespace ASAP_WPF
 
         private void CalculateCellLengths(VectorOfPoint contour)
         {
+            //TODO ez miért is van itt?
+
             var roiRectangle = CvInvoke.BoundingRectangle(contour);
             //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
             var roiMat = new Mat(this.ContourImage, roiRectangle);
@@ -695,11 +690,15 @@ namespace ASAP_WPF
 
         public double CalculateCellLength(VectorOfPoint contour)
         {
-            const double roiUpScale = 1.2;
+            
             //TODO hierarchia kihasználása, hogy a nagyobb kontúr meg legyen, ne a doboz növelésével
             var roiRectangle = CvInvoke.BoundingRectangle(contour);
             var ogSize = roiRectangle.Size;
             var ogPoint = roiRectangle.Location;
+
+            //ogSize.Width > ogSize.Height ? ogSize.Width * Math.Sqrt(2) : ogSize.Height * Math.Sqrt(2);
+            var roiUpScale = Math.Sqrt(2);
+
             var newSize = new Size((int) (ogSize.Width * roiUpScale) , (int)(ogSize.Height * roiUpScale));
 
             var diffWidth = newSize.Width - ogSize.Width;
@@ -717,9 +716,11 @@ namespace ASAP_WPF
             MainWindow.ImageProcessorExaminer.AddImage(newRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_newRoiMat");
             var pixelNum = CvInvoke.CountNonZero(roiMat);
             if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
-            var tempRect = CvInvoke.MinAreaRect(contour);
-            var rotatedRoiMat = newRoiMat.RotateMatWithoutCutoff(tempRect);
+            //var tempRect = CvInvoke.MinAreaRect(contour);
+            var rotatedRoiMat = newRoiMat.RotateMat(contour);
+            var rotatedRoiMatAlt = newRoiMat.RotateMat(contour, 90.0);
             MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMat");
+            MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMatAlt.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMatAlt");
             ////var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
             ////var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
             //var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();

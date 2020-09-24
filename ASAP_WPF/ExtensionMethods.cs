@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using Emgu.CV;
+using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Point = System.Drawing.Point;
@@ -59,9 +61,134 @@ namespace ASAP_WPF
             return vectorToReturn;
         }
 
+        public static Point GetContourCenterPoint(this VectorOfPoint contour)
+        {
+            var moment = CvInvoke.Moments(contour);
+            var cx = moment.M10 / moment.M00;
+            var cy = moment.M01 / moment.M00;
+            var tempPoint = new Point((int)cx, (int)cy);
+            return tempPoint;
+        }
+
+        public static PointF GetContourCenterPointF(this VectorOfPoint contour)
+        {
+            var moment = CvInvoke.Moments(contour);
+            var cx = moment.M10 / moment.M00;
+            var cy = moment.M01 / moment.M00;
+            var tempPoint = new PointF((float)cx, (float)cy);
+            return tempPoint;
+        }
+
+        public static Mat RotateMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
+        {
+            return RotateMat(uprightBondingRectangleMat, contour, 0.0);
+        }
+
+        public static Mat RotateMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
+        {
+            var angledBoundingRectangle = CvInvoke.MinAreaRect(contour);
+            var ogHeight = uprightBondingRectangleMat.Height;
+            var ogWidth = uprightBondingRectangleMat.Width;
+
+            var ogBBoxHeight = angledBoundingRectangle.Size.Height;
+            var ogBBoxWidth = angledBoundingRectangle.Size.Width;
+
+            //var center = new PointF((float)(ogBBoxWidth / 2.0), (float)(ogBBoxHeight / 2.0));
+            var center = new PointF((float)(ogWidth / 2.0), (float)(ogHeight / 2.0));
+
+            //var center = contour.GetContourCenterPointF();
+
+            var rotatingMat = new Mat();
+            var ogSize = uprightBondingRectangleMat.Size;
+
+            var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            if (ogSize.Width < ogSize.Height)
+            {
+                desiredAngleOfRotation = 90 + desiredAngleOfRotation;
+            }
+
+            CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
+
+            /*
+            def rotate_bound(image, angle):
+            # grab the dimensions of the image and then determine the
+            # center
+            (h, w) = image.shape[:2]
+            (cX, cY) = (w / 2, h / 2)
+
+            # grab the rotation matrix (applying the negative of the
+            # angle to rotate clockwise), then grab the sine and cosine
+            # (i.e., the rotation components of the matrix)
+            M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+            cos = np.abs(M[0, 0])
+            sin = np.abs(M[0, 1])
+
+            # compute the new bounding dimensions of the image
+            nW = int((h * sin) + (w * cos))
+            nH = int((h * cos) + (w * sin))
+
+            # adjust the rotation matrix to take into account translation
+            M[0, 2] += (nW / 2) - cX
+            M[1, 2] += (nH / 2) - cY
+
+            # perform the actual rotation and return the image
+            return cv2.warpAffine(image, M, (nW, nH))
+            */
+
+            //https://math.stackexchange.com/questions/2093314/rotation-matrix-of-rotation-around-a-point-other-than-the-origin
+            //https://stackoverflow.com/questions/11764575/python-2-7-3-opencv-2-4-after-rotation-window-doesnt-fit-image
+
+            //var r = (Math.PI / 180) * desiredAngleOfRotation;
+
+            //newX = abs(np.sin(r)*newY) + abs(np.cos(r)*newX)
+            //newY = abs(np.sin(r)*newX) + abs(np.cos(r)*newY)
+
+            //var newWidth = Math.Abs(Math.Sin(desiredAngleOfRotation) * ogWidth) + Math.Abs(Math.Cos(desiredAngleOfRotation) * ogWidth);
+            //var newHeight = Math.Abs(Math.Sin(desiredAngleOfRotation) * ogHeight) + Math.Abs(Math.Cos(desiredAngleOfRotation) * ogHeight);
+
+            var cos = Math.Abs((double) rotatingMat.GetData().GetValue(0, 0));
+            var sin = Math.Abs((double) rotatingMat.GetData().GetValue(0, 1));
+
+            //var tempFirst = (double)rotatingMat.GetData().GetValue(0, 2) + uprightBondingRectangleMat.Width / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
+            //var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+
+            var newWidth = (int)((ogHeight * sin) + (ogWidth * cos));
+            var newHeight = (int)((ogHeight * cos) + (ogWidth * sin));
+
+            var tempFirst = (double)rotatingMat.GetData().GetValue(0, 2) + newWidth / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
+            var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + newHeight / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+
+            /*var tempFirst = double.NaN;
+            var tempSecond = double.NaN;
+
+            if (ogSize.Width < ogSize.Height)
+            {
+                 tempFirst = (double)rotatingMat.GetData().GetValue(1, 2) + newWidth / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
+                 tempSecond = (double)rotatingMat.GetData().GetValue(0, 2) + newHeight / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+            }
+            else
+            {
+                 tempFirst = (double)rotatingMat.GetData().GetValue(0, 2) + newWidth / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
+                 tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + newHeight / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+            }*/
+
+            rotatingMat.SetValue(2, 0, tempFirst);
+            rotatingMat.SetValue(2, 1, tempSecond);
+
+            var matToReturn = new Mat();
+
+
+
+            //var tempSize = ogSize.Width > ogSize.Height ? new Size( ogSize.Width, ogSize.Width) : new Size(ogSize.Height, ogSize.Height);
+
+            CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, rotatingMat, new Size((int)newWidth,(int)newHeight));
+
+            return matToReturn;
+        }
 
         public static Mat RotateMatWithoutCutoff(this Mat uprightBondingRectangleMat, RotatedRect angledBoundingRectangle)
-        {//https://docs.opencv.org/master/da/d0c/tutorial_bounding_rects_circles.html
+        {
+            //https://docs.opencv.org/master/da/d0c/tutorial_bounding_rects_circles.html
             //az upright kell majd nekünk :D jeeeee
 
 
@@ -70,43 +197,127 @@ namespace ASAP_WPF
             //var tempRectangle = boundingRectangle.MinAreaRect();
             var height = uprightBondingRectangleMat.Height;
             var width = uprightBondingRectangleMat.Width;
-            //var center = new PointF((float)(width / 2.0), (float)(height / 2.0));
-            var center = angledBoundingRectangle.Center;
+            var center = new PointF((float)(width / 2.0), (float)(height / 2.0));
+            //var center = angledBoundingRectangle.Center;
             //var temp = CvInvoke.BoundingRectangle(angledBoundingRectangle.MinAreaRect())
             //az angle -- The angle of the box in degrees. Possitive value means counter-clock wise rotation
 
             //Itt az angle az
 
             var rotatingMat = new Mat();
-            double desiredAngleOfRotation;
 
-            if (angledBoundingRectangle.Angle < 0)
+
+            //Angle between the horizontal axis and the first side (width) in degrees
+            //Positive value means  counter-clockwise rotation
+
+            //if (angledBoundingRectangle.Angle < 0)
+            //{
+            //    desiredAngleOfRotation = angledBoundingRectangle.Angle < 90 ?  -Math.Abs(0 - angledBoundingRectangle.Angle) :  -Math.Abs(180 - angledBoundingRectangle.Angle);
+            //    desiredAngleOfRotation += 90;
+            //}
+            //else if (angledBoundingRectangle.Angle > 0)
+            //{
+            //    desiredAngleOfRotation = angledBoundingRectangle.Angle < -90 ? -Math.Abs(0 - angledBoundingRectangle.Angle) : -Math.Abs(180 - angledBoundingRectangle.Angle);
+            //    desiredAngleOfRotation -= 90;
+            //}
+
+            //desiredAngleOfRotation = angledBoundingRectangle.Angle < 0 ? angledBoundingRectangle.Angle :  - angledBoundingRectangle.Angle;
+
+            //desiredAngleOfRotation = angledBoundingRectangle.Angle + 90 < 180 ? angledBoundingRectangle.Angle + 90 : -angledBoundingRectangle.Angle;
+
+
+            var ogSize = uprightBondingRectangleMat.Size;
+
+            //desiredAngleOfRotation = angledBoundingRectangle.Angle < 0 ? angledBoundingRectangle.Angle : - angledBoundingRectangle.Angle;
+
+            //desiredAngleOfRotation = ogSize.Width > ogSize.Height ? desiredAngleOfRotation : desiredAngleOfRotation + 90;
+
+            //https://stackoverflow.com/questions/24073127/opencvs-rotatedrect-angle-does-not-provide-enough-information
+
+            double desiredAngleOfRotation = angledBoundingRectangle.Angle;
+            if (ogSize.Width < ogSize.Height)
             {
-                desiredAngleOfRotation = angledBoundingRectangle.Angle < 90 ?  Math.Abs(0 - angledBoundingRectangle.Angle) :  Math.Abs(180 - angledBoundingRectangle.Angle);
-            }
-            else
-            {
-                desiredAngleOfRotation = angledBoundingRectangle.Angle < -90 ? Math.Abs(0 - angledBoundingRectangle.Angle) : Math.Abs(180 - angledBoundingRectangle.Angle);
+                desiredAngleOfRotation = 90 + desiredAngleOfRotation;
             }
 
             CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
 
             //Ez fölösleges, ha tényleg upright az a rectangle !
             var tempFirst = (double)rotatingMat.GetData().GetValue(0,2) + uprightBondingRectangleMat.Width / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
-            var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - angledBoundingRectangle.Size.Height / 2.0; ;
-            rotatingMat.GetData().SetValue(tempFirst,0, 2);
-            rotatingMat.GetData().SetValue(tempSecond, 1, 2);
+            var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+
+            //rotatingMat.Data.SetValue(tempFirst,0, 2);
+            //rotatingMat.Data.SetValue(tempSecond, 1, 2);
+
+            //rotatingMat.GetRawData().SetValue(tempFirst, 0, 2);
+            //rotatingMat.GetRawData().SetValue(tempSecond, 1, 2);
+
+            //var tempMatAlpha = rotatingMat.Row(0).Col(2);
+            //var tempMatBeta= rotatingMat.Row(1).Col(2);
+            //tempMatAlpha.Data.SetValue(tempFirst,0);
+            //tempMatBeta.Data.SetValue(tempSecond, 0);
 
 
+            rotatingMat.SetValue(2,0,tempFirst);
+            rotatingMat.SetValue(2, 1, tempSecond);
             //var roiBoundingRectangle = new RotatedRect(center,new SizeF(width,height),boundingRectangle.Angle).MinAreaRect();
 
 
             //rotatingMat.GetData().
 
             var matToReturn = new Mat();
-            //TODO befelyezni :|
             //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
-            CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, uprightBondingRectangleMat.Size);
+            /*
+             def rotate(image, angle, center=None, scale=1.0):
+            # grab the dimensions of the image
+            (h, w) = image.shape[:2]
+
+            # if the center is None, initialize it as the center of
+            # the image
+            if center is None:
+                center = (w // 2, h // 2)
+
+            # perform the rotation
+            M = cv2.getRotationMatrix2D(center, angle, scale)
+            rotated = cv2.warpAffine(image, M, (w, h))
+
+            # return the rotated image
+            return rotated
+
+            def rotate_bound(image, angle):
+            # grab the dimensions of the image and then determine the
+            # center
+            (h, w) = image.shape[:2]
+            (cX, cY) = (w / 2, h / 2)
+
+            # grab the rotation matrix (applying the negative of the
+            # angle to rotate clockwise), then grab the sine and cosine
+            # (i.e., the rotation components of the matrix)
+            M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+            cos = np.abs(M[0, 0])
+            sin = np.abs(M[0, 1])
+
+            # compute the new bounding dimensions of the image
+            nW = int((h * sin) + (w * cos))
+            nH = int((h * cos) + (w * sin))
+
+            # adjust the rotation matrix to take into account translation
+            M[0, 2] += (nW / 2) - cX
+            M[1, 2] += (nH / 2) - cY
+
+            # perform the actual rotation and return the image
+            return cv2.warpAffine(image, M, (nW, nH))
+
+             */
+            //https://en.wikipedia.org/wiki/Affine_transformation
+
+            //Ez nem volt itt a jó, de mégis, mert azért nem csináltunk bboxot, mert hogy az már van nekünk
+
+            //CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, uprightBondingRectangleMat.Size);
+
+            var tempSize = ogSize.Width > ogSize.Height ? new Size(ogSize.Width, ogSize.Height) : new Size(ogSize.Height, ogSize.Width);
+
+            CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, tempSize);
 
             return matToReturn;
         }
@@ -353,7 +564,45 @@ namespace ASAP_WPF
             return returnMat;
         }
 
-        public static int GetPrevValueOfMatrix(this Mat matToMeasure, int colIdx, int rowIdx)
+        //https://stackoverflow.com/questions/32255440/how-can-i-get-and-set-pixel-values-of-an-emgucv-mat-image
+
+        public static dynamic GetValue(this Mat mat, int row, int col)
+        {
+            var value = CreateElement(mat.Depth);
+            Marshal.Copy(mat.DataPointer + (row * mat.Cols + col) * mat.ElementSize, value, 0, 1);
+            return value[0];
+        }
+
+        public static void SetValue(this Mat mat, int row, int col, dynamic value)
+        {
+            var target = CreateElement(mat.Depth, value);
+            Marshal.Copy(target, 0, mat.DataPointer + (row * mat.Cols + col) * mat.ElementSize, 1);
+        }
+
+        private static dynamic CreateElement(DepthType depthType, dynamic value)
+        {
+            var element = CreateElement(depthType);
+            element[0] = value;
+            return element;
+        }
+
+        private static dynamic CreateElement(DepthType depthType)
+        {
+            return depthType switch
+            {
+                DepthType.Cv8S => new sbyte[1],
+                DepthType.Cv8U => new byte[1],
+                DepthType.Cv16S => new short[1],
+                DepthType.Cv16U => new ushort[1],
+                DepthType.Cv32S => new int[1],
+                DepthType.Cv32F => new float[1],
+                DepthType.Cv64F => new double[1],
+                _ => new float[1]
+            };
+        }
+
+
+    public static int GetPrevValueOfMatrix(this Mat matToMeasure, int colIdx, int rowIdx)
         {
             var returnVal = int.MinValue;
 

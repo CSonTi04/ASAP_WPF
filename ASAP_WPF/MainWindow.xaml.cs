@@ -450,12 +450,22 @@ namespace ASAP_WPF
         private void SetLengthProperties()
         {
             VoidLengthProperties();
-            this.SelectedCellLength = this.ImageHandler.GetCellLengthWithBoundingBox(LastClickedPoint);
+            var tempVect = this.ImageHandler.GetContour(LastClickedPoint);
+            var bBox = CvInvoke.MinAreaRect(tempVect);
+            this.SelectedCellLength = this.ImageHandler.GetCellLengthWithBoundingBoxPoint(LastClickedPoint);
             if (this.SelectedCellLength < 0) return;
             CurrCellLengthBox.Text = SelectedCellLength.ToString(CultureInfo.InvariantCulture);
             CurrCellLengthBox.Background = Brushes.Orange;
             CurrCellLengthCoordinates.Text = LastClickedPoint.ToString();
             CurrCellLengthCoordinates.Background = Brushes.Orange;
+
+            double desiredAngleOfRotation = bBox.Angle;
+            if (bBox.Size.Width < bBox.Size.Height)
+            {
+                desiredAngleOfRotation = 90 + desiredAngleOfRotation;
+            }
+            CurrCellLengthAngle.Text = desiredAngleOfRotation.ToString(CultureInfo.InvariantCulture);
+            CurrCellLengthAngle.Background = Brushes.Orange;
 
             ImageHandler.PrintAllTypeOfCellLengthToDebug(LastClickedPoint);
         }
@@ -463,7 +473,7 @@ namespace ASAP_WPF
         private void LookForSameContourWithinNewPicture()
         {
             var newContourCenter = LastSelectedContour;
-            var lastSelectedContourCenterPoint = ImageHandler.GetContourCenterPoint(newContourCenter);
+            var lastSelectedContourCenterPoint = newContourCenter.GetContourCenterPoint();
             this.LastClickedPoint = lastSelectedContourCenterPoint;
             var newlyFoundContour = ImageHandler.GetContour(lastSelectedContourCenterPoint);
             if (null == newlyFoundContour) return;
@@ -479,6 +489,8 @@ namespace ASAP_WPF
             CurrCellLengthBox.Background = Brushes.IndianRed;
             CurrCellLengthCoordinates.Text = "";
             CurrCellLengthCoordinates.Background = Brushes.IndianRed;
+            CurrCellLengthAngle.Text = "";
+            CurrCellLengthAngle.Background = Brushes.IndianRed;
         }
     }
 }
