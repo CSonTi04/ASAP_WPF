@@ -656,7 +656,7 @@ namespace ASAP_WPF
             return tempPoint;
         }
 
-        
+
 
         public string GetCurrentImgPath()
         {
@@ -690,7 +690,7 @@ namespace ASAP_WPF
 
         public double CalculateCellLength(VectorOfPoint contour)
         {
-            
+
             //TODO hierarchia kihasználása, hogy a nagyobb kontúr meg legyen, ne a doboz növelésével
             var roiRectangle = CvInvoke.BoundingRectangle(contour);
             var ogSize = roiRectangle.Size;
@@ -717,12 +717,16 @@ namespace ASAP_WPF
             var pixelNum = CvInvoke.CountNonZero(roiMat);
             if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
             //var tempRect = CvInvoke.MinAreaRect(contour);
-            var rotatedRoiMat = newRoiMat.RotateMat(contour);
-            var rotatedRoiMatAlt = newRoiMat.RotateMat(contour, 90.0);
+            //var rotatedRoiMat = newRoiMat.RotateMat(contour);
+            //var rotatedRoiMatAlt = newRoiMat.RotateMat(contour, 90.0);
+
+            var rotatedRoiMat = newRoiMat.RotMat(contour);
+            var rotatedRoiMatAlt = newRoiMat.RotMat(contour, 90.0);
+
             MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMat");
             MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMatAlt.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMatAlt");
-            ////var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
-            ////var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
+            //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
+            //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
             //var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
             var sizeInPx = - 1;
             return sizeInPx;

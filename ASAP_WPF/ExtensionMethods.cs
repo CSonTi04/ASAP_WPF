@@ -78,6 +78,82 @@ namespace ASAP_WPF
             var tempPoint = new PointF((float)cx, (float)cy);
             return tempPoint;
         }
+        public static Mat RotMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
+        {
+            return RotMat(uprightBondingRectangleMat, contour, 0.0);
+        }
+
+        public static Mat RotMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
+         {
+            var matToReturn = new Mat();
+
+            var angledBoundingRectangle = CvInvoke.MinAreaRect(contour);
+            var ogHeight = uprightBondingRectangleMat.Height;
+            var ogWidth = uprightBondingRectangleMat.Width;
+
+            var ogBBoxHeight = angledBoundingRectangle.Size.Height;
+            var ogBBoxWidth = angledBoundingRectangle.Size.Width;
+
+
+            var ogCenter = new PointF((float)(ogWidth / 2.0 - 0.5), (float)(ogHeight / 2.0 - 0.5));
+
+            var ogSize = uprightBondingRectangleMat.Size;
+
+            var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            if (ogSize.Width < ogSize.Height)
+            {
+                desiredAngleOfRotation = 90 + desiredAngleOfRotation;
+            }
+
+            //var sin = Math.Sin(desiredAngleOfRotation);
+            //var cos = Math.Sin(desiredAngleOfRotation);
+
+            var rotatingMat = CreateRotationMatrix(desiredAngleOfRotation);
+            var altRotatingMat = new Mat();
+            CvInvoke.GetRotationMatrix2D(new PointF(0f,0f), desiredAngleOfRotation, 1.0, altRotatingMat);
+
+            var cos = Math.Abs((double)rotatingMat.GetData().GetValue(0, 0));
+            var sin = Math.Abs((double)rotatingMat.GetData().GetValue(0, 1));
+
+            var cosAlt = Math.Abs((double)altRotatingMat.GetData().GetValue(0, 0));
+            var sinAlt = Math.Abs((double)altRotatingMat.GetData().GetValue(0, 1));
+
+            var newWidth = (int)((ogHeight * sin) + (ogWidth * cos));
+            var newHeight = (int)((ogHeight * cos) + (ogWidth * sin));
+            var newCenterPoint = new PointF((float) (newWidth / 2.0 - 0.5), (float)(newHeight / 2.0 - 0.5));
+
+            var shiftingMatOne = CreateTranslationMat(newWidth / 2.0 - 0.5,newHeight / 2.0 - 0.5);
+            var shiftingMatTwo = CreateTranslationMat(-(newWidth / 2.0 - 0.5), -(newHeight / 2.0 - 0.5));
+
+            //var rotatedShiftedMat = shiftingMatTwo.Cross(rotatingMat.Cross(shiftingMatOne));
+
+            //var rotatedShiftedMat = new Mat();
+
+            var tempMatOne = new Mat();
+            CvInvoke.Multiply(   shiftingMatOne, rotatingMat, tempMatOne);
+            var tempMatTwo = new Mat();
+            CvInvoke.Multiply(  tempMatOne, shiftingMatTwo, tempMatTwo);
+
+            var rotatedShiftedMat = tempMatTwo.GetRowsFromRange(0, 1);
+
+            var rotatedShiftedMatAlt = CreateRotationAndTranslationMat(newCenterPoint, desiredAngleOfRotation);
+            rotatedShiftedMatAlt = rotatedShiftedMatAlt.GetRowsFromRange(0, 1);
+
+
+
+
+            CvInvoke.WarpAffine(uprightBondingRectangleMat, tempMatOne, rotatedShiftedMat, new Size(newWidth,newHeight));
+            CvInvoke.WarpAffine(uprightBondingRectangleMat, tempMatTwo, rotatedShiftedMatAlt, new Size(newWidth, newHeight));
+
+
+            MainWindow.ImageProcessorExaminer.AddImage(tempMatOne.CreateNewHardCopyFromMat(), "WarpAffine_rotatedShiftedMat");
+            MainWindow.ImageProcessorExaminer.AddImage(tempMatTwo.CreateNewHardCopyFromMat(), "WarpAffine_rotatedShiftedMatAlt");
+
+            //CvInvoke.WarpPerspective(uprightBondingRectangleMat, matToReturn, rotatedShiftedMat, new Size(newWidth, newHeight));
+
+            matToReturn = tempMatTwo;
+            return matToReturn;
+        }
 
         public static Mat RotateMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
         {
@@ -94,7 +170,7 @@ namespace ASAP_WPF
             var ogBBoxWidth = angledBoundingRectangle.Size.Width;
 
             //var center = new PointF((float)(ogBBoxWidth / 2.0), (float)(ogBBoxHeight / 2.0));
-            var center = new PointF((float)(ogWidth / 2.0), (float)(ogHeight / 2.0));
+            var center = new PointF((float)(ogWidth / 2.0 - 0.5), (float)(ogHeight / 2.0 - 0.5));
 
             //var center = contour.GetContourCenterPointF();
 
@@ -107,7 +183,7 @@ namespace ASAP_WPF
                 desiredAngleOfRotation = 90 + desiredAngleOfRotation;
             }
 
-            CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
+
 
             /*
             def rotate_bound(image, angle):
@@ -146,6 +222,8 @@ namespace ASAP_WPF
             //var newWidth = Math.Abs(Math.Sin(desiredAngleOfRotation) * ogWidth) + Math.Abs(Math.Cos(desiredAngleOfRotation) * ogWidth);
             //var newHeight = Math.Abs(Math.Sin(desiredAngleOfRotation) * ogHeight) + Math.Abs(Math.Cos(desiredAngleOfRotation) * ogHeight);
 
+            CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
+
             var cos = Math.Abs((double) rotatingMat.GetData().GetValue(0, 0));
             var sin = Math.Abs((double) rotatingMat.GetData().GetValue(0, 1));
 
@@ -157,6 +235,14 @@ namespace ASAP_WPF
 
             var tempFirst = (double)rotatingMat.GetData().GetValue(0, 2) + newWidth / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
             var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + newHeight / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+
+            //var translationMat = CreateTranslationMat(rotatingMat.Depth,center.X,center.Y);
+
+            var newCenter = new PointF((float)(newWidth / 2.0 - 0.5), (float)(newHeight / 2.0 - 0.5));
+
+            //CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
+
+            CvInvoke.GetRotationMatrix2D(newCenter, desiredAngleOfRotation, 1.0, rotatingMat);
 
             /*var tempFirst = double.NaN;
             var tempSecond = double.NaN;
@@ -172,19 +258,94 @@ namespace ASAP_WPF
                  tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + newHeight / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
             }*/
 
-            rotatingMat.SetValue(2, 0, tempFirst);
-            rotatingMat.SetValue(2, 1, tempSecond);
+            //var offsetMat = rotatingMat.CreateNewMatLikeThis();
+
+            rotatingMat.SetValue(0, 2, tempFirst);
+            rotatingMat.SetValue(1, 2, tempSecond);
+            //offsetMat.SetValue(0, 2, tempFirst);
+            //offsetMat.SetValue(1, 2, tempSecond);
+
 
             var matToReturn = new Mat();
 
 
 
+
+            //https://stackoverflow.com/questions/4279008/specify-an-origin-to-warpperspective-function-in-opencv-2-x
+
+
             //var tempSize = ogSize.Width > ogSize.Height ? new Size( ogSize.Width, ogSize.Width) : new Size(ogSize.Height, ogSize.Height);
+
+            //CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, offsetMat, new Size((int)newWidth, (int)newHeight));
+            //MainWindow.ImageProcessorExaminer.AddImage(matToReturn.CreateNewHardCopyFromMat(), "RotateMat_offsetMat");
 
             CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, rotatingMat, new Size((int)newWidth,(int)newHeight));
 
             return matToReturn;
         }
+
+
+        //https://stackoverflow.com/questions/4279008/specify-an-origin-to-warpperspective-function-in-opencv-2-x
+        public  static Mat CreateTranslationMat(double dx, double dy)
+        {
+            var matToReturn = Mat.Eye(3, 3, DepthType.Cv64F, 1);
+            matToReturn.SetValue(0,2,dx);
+            matToReturn.SetValue(1, 2, dy);
+            return matToReturn;
+        }
+
+        public static Mat CreateTranslationMat(PointF newCenterPoint)
+        {
+            var matToReturn = Mat.Eye(3, 3, DepthType.Cv64F, 1);
+            matToReturn.SetValue(0, 2, newCenterPoint.X);
+            matToReturn.SetValue(1, 2, newCenterPoint.Y);
+            return matToReturn;
+        }
+
+        public static Mat CreateRotationMatrix(double angleOfRotation)
+        {
+            var matToReturn = Mat.Zeros(3, 3, DepthType.Cv64F, 1);
+            //https://github.com/opencv/opencv/blob/master/modules/imgproc/src/imgwarp.cpp
+            //[np.sin(np.pi/4), -np.cos(np.pi/4), 0,
+            //np.cos(np.pi/4), np.sin(np.pi/4), 0,
+            //0, 0, 1]).reshape((3,3))
+
+            var sin = Math.Sin(angleOfRotation);
+            var cos = Math.Cos(angleOfRotation);
+            //???? most akkor ezt hogy is?
+            matToReturn.SetValue(0,0,cos);
+            matToReturn.SetValue(0, 1, -sin);
+            matToReturn.SetValue(1, 0, sin);
+            matToReturn.SetValue(1, 1, cos);
+            matToReturn.SetValue(2, 2, 1);
+
+            return matToReturn;
+        }
+
+        public static Mat CreateRotationAndTranslationMat(PointF newCenterPoint,double angleOfRotation)
+        {
+            var matToReturn = Mat.Zeros(3, 3, DepthType.Cv64F, 1);
+
+            //[np.sin(np.pi/4), -np.cos(np.pi/4), 0,
+            //np.cos(np.pi/4), np.sin(np.pi/4), 0,
+            //0, 0, 1]).reshape((3,3))
+
+            var sin = Math.Sin(angleOfRotation);
+            var cos = Math.Cos(angleOfRotation);
+            var x = newCenterPoint.X;
+            var y = newCenterPoint.Y;
+
+            matToReturn.SetValue(0, 0, cos);
+            matToReturn.SetValue(0, 1, -sin);
+            matToReturn.SetValue(0, 2, -x * cos + y * sin + x);
+            matToReturn.SetValue(1, 0, sin);
+            matToReturn.SetValue(1, 1, cos);
+            matToReturn.SetValue(1, 2, -x * sin - y * cos + y);
+            matToReturn.SetValue(2, 2, 1);
+
+            return matToReturn;
+        }
+
 
         public static Mat RotateMatWithoutCutoff(this Mat uprightBondingRectangleMat, RotatedRect angledBoundingRectangle)
         {
@@ -550,7 +711,7 @@ namespace ASAP_WPF
             var returnMat = new Mat(matToSlice, slice);
             */
             //ez remélhetőleg csak a headert állítja és jóóóó gyors lesz :)
-            var rowRange = new Range(rowStartIdx,rowEndIdx);
+            var rowRange = new Range(rowStartIdx,rowEndIdx + 1);
             var colRange = new Range(0,matToSlice.Cols);
             var returnMat = new Mat(matToSlice, rowRange, colRange);
             return returnMat;
@@ -559,7 +720,7 @@ namespace ASAP_WPF
         public static Mat GetColsFromRange(this Mat matToSlice, int colStartIDx, int colEndIdx)
         {
             var rowRange = new Range(0, matToSlice.Rows);
-            var colRange = new Range(colStartIDx, colEndIdx);
+            var colRange = new Range(colStartIDx, colEndIdx + 1);
             var returnMat = new Mat(matToSlice, rowRange, colRange);
             return returnMat;
         }
