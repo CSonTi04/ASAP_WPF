@@ -730,9 +730,11 @@ namespace ASAP_WPF
             var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
             var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
 
+            //var sizeInPx = -1;
+            //var sizeInPxAlt = -1;
             var valueToReturn = sizeInPx > sizeInPxAlt ? sizeInPx : sizeInPxAlt;
             //var sizeInPx = - 1;
-            return valueToReturn;
+            return sizeInPx;
         }
     }
 }

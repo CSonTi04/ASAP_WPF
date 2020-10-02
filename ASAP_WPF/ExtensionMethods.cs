@@ -130,9 +130,22 @@ namespace ASAP_WPF
 
             CvInvoke.WarpAffine(newRoi, matToReturn, rotatingMat,newRoi.Size);
 
-            MainWindow.ImageProcessorExaminer.AddImage(matToReturn.CreateNewHardCopyFromMat(), "RotMat_RotatedRoi");
 
-            return matToReturn;
+            //CvInvoke.GaussianBlur(this.ImageMat, this.ImageMat, new Size(), 0);
+
+
+            //Adaptive threshold
+            //var tempAdaptiveThreshold = MainWindow.ImageHandler.ImgProcessor.AdaptiveThresholdConstant;
+            //var tempAdaptiveThreshold = 5;
+
+            var tresholdedMat = new Mat();
+            //CvInvoke.AdaptiveThreshold(matToReturn, tresholdedMat, 255, Emgu.CV.CvEnum.AdaptiveThresholdType.MeanC, Emgu.CV.CvEnum.ThresholdType.Binary, 59, tempAdaptiveThreshold);
+            CvInvoke.Threshold(matToReturn, tresholdedMat, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+            //TODO kideríteni, hogy ide milyen thresholding kellene
+            MainWindow.ImageProcessorExaminer.AddImage(matToReturn.CreateNewHardCopyFromMat(), "RotMat_RotatedRoi");
+            MainWindow.ImageProcessorExaminer.AddImage(tresholdedMat.CreateNewHardCopyFromMat(), "RotMat_ThresholdedRotatedRoi");
+
+            return tresholdedMat;
         }
 
         /*public static Mat RotMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
@@ -751,16 +764,33 @@ namespace ASAP_WPF
                 var tempRow = matToMeasure.Row(rowIdx);
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
+                    var nonZeroPixelNum = CvInvoke.CountNonZero(tempRow);
+                    if (nonZeroPixelNum == 0) continue;
                     //var tempObject = tempRow.GetData().GetValue(0, colIdx);
                     var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
                     if ( colIdx > 0) prevPixelVal = (byte)tempRow.GetData().GetValue(0, colIdx-1);
 
                     //Helyette inkább majd http://www.emgu.com/wiki/files/3.1.0/document/html/1293f167-1f50-82a2-14f0-5cbd3fff67a4.htm
                     if (!(BLACK_PIXEL < tempValue || tempValue < WHITE_PIXEL)) throw new Exception("Given image in the matrix has no proper threshold applied!");
-                    if (!foundFirstWhitePixelInFrontOfCell && WHITE_PIXEL == tempValue) foundFirstWhitePixelInFrontOfCell = true;
-                    if (foundFirstWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal) foundLastWhitePixelInFrontOfCell = true;
-                    if (BLACK_PIXEL == prevPixelVal && WHITE_PIXEL == tempValue) foundLastBlackPixelOfCell = true;
-                    if (!foundLastBlackPixelOfCell && foundLastWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue) counter++;
+                    if (!foundFirstWhitePixelInFrontOfCell && WHITE_PIXEL == tempValue)
+                    {
+                        foundFirstWhitePixelInFrontOfCell = true;
+                    }
+
+                    if (foundFirstWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
+                    {
+                        foundLastWhitePixelInFrontOfCell = true;
+                    }
+
+                    if (BLACK_PIXEL == prevPixelVal && WHITE_PIXEL == tempValue)
+                    {
+                        foundLastBlackPixelOfCell = true;
+                    }
+
+                    if (!foundLastBlackPixelOfCell && foundLastWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue)
+                    {
+                        counter++;
+                    }
 
                 }
             }
@@ -778,9 +808,11 @@ namespace ASAP_WPF
             //var slidingWindowMat = new Mat();
 
 
-            for (var rowIdx = 0; rowIdx + slidingWindowSize < matToMeasure.Rows; rowIdx++)
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
             {
-                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize);
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
                 var slidingWindowArea = slidingWindowMat.GetAreaOfCellSlice();
                 if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
                 biggestAreSoFar = slidingWindowArea;
