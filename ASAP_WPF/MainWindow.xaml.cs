@@ -340,7 +340,8 @@ namespace ASAP_WPF
             //ImageHandler.DrawSelectedCellContourBoxToImageToDisplay(ImageHandler.ContourCenter(LastClickedPoint));
 
             //var contour = this.ImageHandler.GetContour(this.LastClickedPoint);
-            ImageHandler.CalculateCellLength(LastSelectedContour);
+            var calculatedCellLength = ImageHandler.CalculateCellLength(LastSelectedContour);
+            Debug.WriteLine("Calculated cell length: " + calculatedCellLength);
 
             UpdateImgBox(true);
             //this.ImageHandler.Process();

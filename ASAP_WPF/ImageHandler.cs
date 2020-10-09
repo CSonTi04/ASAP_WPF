@@ -728,11 +728,11 @@ namespace ASAP_WPF
             //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
             //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
             var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
-            var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
+            //var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
 
             //var sizeInPx = -1;
             //var sizeInPxAlt = -1;
-            var valueToReturn = sizeInPx > sizeInPxAlt ? sizeInPx : sizeInPxAlt;
+            //var valueToReturn = sizeInPx > sizeInPxAlt ? sizeInPx : sizeInPxAlt;
             //var sizeInPx = - 1;
             return sizeInPx;
         }

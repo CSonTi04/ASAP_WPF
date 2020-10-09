@@ -22,14 +22,16 @@ namespace ASAP_WPF
 
         public static Mat CreateNewHardCopyFromMat(this Mat matToHardCopy)
         {
-            var returnMat = new Mat(matToHardCopy.Rows, matToHardCopy.Cols, matToHardCopy.Depth, matToHardCopy.NumberOfChannels);
+            var returnMat = new Mat(matToHardCopy.Rows, matToHardCopy.Cols, matToHardCopy.Depth,
+                matToHardCopy.NumberOfChannels);
             matToHardCopy.CopyTo(returnMat);
             return returnMat;
         }
 
         public static Mat CreateNewMatLikeThis(this Mat matToHardCopy)
         {
-            var returnMat = new Mat(matToHardCopy.Rows, matToHardCopy.Cols, matToHardCopy.Depth, matToHardCopy.NumberOfChannels);
+            var returnMat = new Mat(matToHardCopy.Rows, matToHardCopy.Cols, matToHardCopy.Depth,
+                matToHardCopy.NumberOfChannels);
             return returnMat;
         }
 
@@ -44,6 +46,7 @@ namespace ASAP_WPF
                 temp.Push(pointList.ToArray());
                 vectorToReturn.Push(temp);
             }
+
             return vectorToReturn;
         }
 
@@ -54,10 +57,11 @@ namespace ASAP_WPF
             foreach (var vector in vectorArrayOfArray)
             {
                 var temp = new VectorOfPointF();
-                var pointList = vector.Select(point => new PointF((int)point.X, (int)point.Y)).ToList();
+                var pointList = vector.Select(point => new PointF((int) point.X, (int) point.Y)).ToList();
                 temp.Push(pointList.ToArray());
                 vectorToReturn.Push(temp);
             }
+
             return vectorToReturn;
         }
 
@@ -66,7 +70,7 @@ namespace ASAP_WPF
             var moment = CvInvoke.Moments(contour);
             var cx = moment.M10 / moment.M00;
             var cy = moment.M01 / moment.M00;
-            var tempPoint = new Point((int)cx, (int)cy);
+            var tempPoint = new Point((int) cx, (int) cy);
             return tempPoint;
         }
 
@@ -75,9 +79,10 @@ namespace ASAP_WPF
             var moment = CvInvoke.Moments(contour);
             var cx = moment.M10 / moment.M00;
             var cy = moment.M01 / moment.M00;
-            var tempPoint = new PointF((float)cx, (float)cy);
+            var tempPoint = new PointF((float) cx, (float) cy);
             return tempPoint;
         }
+
         public static Mat RotMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
         {
             return RotMat(uprightBondingRectangleMat, contour, 0.0);
@@ -100,8 +105,9 @@ namespace ASAP_WPF
 
             var oldRoi = uprightBondingRectangleMat;
 
-            var newRoi = Mat.Zeros((int)newRoiSideLength, (int)newRoiSideLength, uprightBondingRectangleMat.Depth,1);
-            var newRoiCenter = new PointF((float)(newRoiSideLength / 2.0 - 0.5 ), (float)(newRoiSideLength / 2.0f - 0.5f ));
+            var newRoi = Mat.Zeros((int) newRoiSideLength, (int) newRoiSideLength, uprightBondingRectangleMat.Depth, 1);
+            var newRoiCenter = new PointF((float) (newRoiSideLength / 2.0 - 0.5),
+                (float) (newRoiSideLength / 2.0f - 0.5f));
 
             var rowOffset = newRoi.Rows / 2 - oldRoi.Rows / 2;
             var colOffset = newRoi.Cols / 2 - oldRoi.Cols / 2;
@@ -109,7 +115,7 @@ namespace ASAP_WPF
             var rowRange = new Range(rowOffset, rowOffset + oldRoi.Rows);
             var colRange = new Range(colOffset, colOffset + oldRoi.Cols);
 
-            var newRoiViewPort = new Mat(newRoi,rowRange,colRange);
+            var newRoiViewPort = new Mat(newRoi, rowRange, colRange);
 
             oldRoi.CopyTo(newRoiViewPort);
 
@@ -118,17 +124,24 @@ namespace ASAP_WPF
 
             //var ogRoiCenter = new PointF((ogRoiWidth / 2f - 0.5f), (ogRoiHeight / 2.0f - 0.5f));
 
-            var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            /*var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
             if (ogBBoxWidth < ogBBoxHeight)
             {
                 desiredAngleOfRotation = 90 + desiredAngleOfRotation;
+
+            }*/
+
+            var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            if (ogBBoxWidth < ogBBoxHeight)
+            {
+                desiredAngleOfRotation = angledBoundingRectangle.Angle - 90.0;
 
             }
 
             var rotatingMat = new Mat();
             CvInvoke.GetRotationMatrix2D(newRoiCenter, desiredAngleOfRotation, 1.0, rotatingMat);
 
-            CvInvoke.WarpAffine(newRoi, matToReturn, rotatingMat,newRoi.Size);
+            CvInvoke.WarpAffine(newRoi, matToReturn, rotatingMat, newRoi.Size);
 
 
             //CvInvoke.GaussianBlur(this.ImageMat, this.ImageMat, new Size(), 0);
@@ -143,7 +156,8 @@ namespace ASAP_WPF
             CvInvoke.Threshold(matToReturn, tresholdedMat, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
             //TODO kideríteni, hogy ide milyen thresholding kellene
             MainWindow.ImageProcessorExaminer.AddImage(matToReturn.CreateNewHardCopyFromMat(), "RotMat_RotatedRoi");
-            MainWindow.ImageProcessorExaminer.AddImage(tresholdedMat.CreateNewHardCopyFromMat(), "RotMat_ThresholdedRotatedRoi");
+            MainWindow.ImageProcessorExaminer.AddImage(tresholdedMat.CreateNewHardCopyFromMat(),
+                "RotMat_ThresholdedRotatedRoi");
 
             return tresholdedMat;
         }
@@ -269,7 +283,7 @@ namespace ASAP_WPF
             var ogBBoxWidth = angledBoundingRectangle.Size.Width;
 
             //var center = new PointF((float)(ogBBoxWidth / 2.0), (float)(ogBBoxHeight / 2.0));
-            var center = new PointF((float)(ogWidth / 2.0 - 0.5), (float)(ogHeight / 2.0 - 0.5));
+            var center = new PointF((float) (ogWidth / 2.0 - 0.5), (float) (ogHeight / 2.0 - 0.5));
 
             //var center = contour.GetContourCenterPointF();
 
@@ -329,15 +343,17 @@ namespace ASAP_WPF
             //var tempFirst = (double)rotatingMat.GetData().GetValue(0, 2) + uprightBondingRectangleMat.Width / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
             //var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
 
-            var newWidth = (int)((ogHeight * sin) + (ogWidth * cos));
-            var newHeight = (int)((ogHeight * cos) + (ogWidth * sin));
+            var newWidth = (int) ((ogHeight * sin) + (ogWidth * cos));
+            var newHeight = (int) ((ogHeight * cos) + (ogWidth * sin));
 
-            var tempFirst = (double)rotatingMat.GetData().GetValue(0, 2) + newWidth / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
-            var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + newHeight / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+            var tempFirst = (double) rotatingMat.GetData().GetValue(0, 2) + newWidth / 2.0 -
+                            angledBoundingRectangle.Size.Width / 2.0;
+            var tempSecond = (double) rotatingMat.GetData().GetValue(1, 2) + newHeight / 2.0 -
+                             angledBoundingRectangle.Size.Height / 2.0;
 
             //var translationMat = CreateTranslationMat(rotatingMat.Depth,center.X,center.Y);
 
-            var newCenter = new PointF((float)(newWidth / 2.0 - 0.5), (float)(newHeight / 2.0 - 0.5));
+            var newCenter = new PointF((float) (newWidth / 2.0 - 0.5), (float) (newHeight / 2.0 - 0.5));
 
             //CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
 
@@ -378,17 +394,18 @@ namespace ASAP_WPF
             //CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, offsetMat, new Size((int)newWidth, (int)newHeight));
             //MainWindow.ImageProcessorExaminer.AddImage(matToReturn.CreateNewHardCopyFromMat(), "RotateMat_offsetMat");
 
-            CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, rotatingMat, new Size((int)newWidth,(int)newHeight));
+            CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, rotatingMat,
+                new Size((int) newWidth, (int) newHeight));
 
             return matToReturn;
         }
 
 
         //https://stackoverflow.com/questions/4279008/specify-an-origin-to-warpperspective-function-in-opencv-2-x
-        public  static Mat CreateTranslationMat(double dx, double dy)
+        public static Mat CreateTranslationMat(double dx, double dy)
         {
             var matToReturn = Mat.Eye(3, 3, DepthType.Cv64F, 1);
-            matToReturn.SetValue(0,2,dx);
+            matToReturn.SetValue(0, 2, dx);
             matToReturn.SetValue(1, 2, dy);
             return matToReturn;
         }
@@ -414,7 +431,7 @@ namespace ASAP_WPF
             var sin = Math.Sin(angle);
             var cos = Math.Cos(angle);
             //???? most akkor ezt hogy is?
-            matToReturn.SetValue(0,0,cos);
+            matToReturn.SetValue(0, 0, cos);
             matToReturn.SetValue(0, 1, sin);
             matToReturn.SetValue(1, 0, -sin);
             matToReturn.SetValue(1, 1, cos);
@@ -423,7 +440,7 @@ namespace ASAP_WPF
             return matToReturn;
         }
 
-        public static Mat CreateRotationAndTranslationMat(PointF newCenterPoint,double angleOfRotation)
+        public static Mat CreateRotationAndTranslationMat(PointF newCenterPoint, double angleOfRotation)
         {
             var matToReturn = Mat.Zeros(3, 3, DepthType.Cv64F, 1);
 
@@ -440,17 +457,18 @@ namespace ASAP_WPF
 
             matToReturn.SetValue(0, 0, alpha);
             matToReturn.SetValue(0, 1, beta);
-            matToReturn.SetValue(0, 2,  (1 - alpha) * x - beta * y );
+            matToReturn.SetValue(0, 2, (1 - alpha) * x - beta * y);
             matToReturn.SetValue(1, 0, -beta);
             matToReturn.SetValue(1, 1, alpha);
-            matToReturn.SetValue(1, 2,  beta * x + (1 - alpha) * y);
+            matToReturn.SetValue(1, 2, beta * x + (1 - alpha) * y);
             matToReturn.SetValue(2, 2, 1);
 
             return matToReturn;
         }
 
 
-        public static Mat RotateMatWithoutCutoff(this Mat uprightBondingRectangleMat, RotatedRect angledBoundingRectangle)
+        public static Mat RotateMatWithoutCutoff(this Mat uprightBondingRectangleMat,
+            RotatedRect angledBoundingRectangle)
         {
             //https://docs.opencv.org/master/da/d0c/tutorial_bounding_rects_circles.html
             //az upright kell majd nekünk :D jeeeee
@@ -461,7 +479,7 @@ namespace ASAP_WPF
             //var tempRectangle = boundingRectangle.MinAreaRect();
             var height = uprightBondingRectangleMat.Height;
             var width = uprightBondingRectangleMat.Width;
-            var center = new PointF((float)(width / 2.0), (float)(height / 2.0));
+            var center = new PointF((float) (width / 2.0), (float) (height / 2.0));
             //var center = angledBoundingRectangle.Center;
             //var temp = CvInvoke.BoundingRectangle(angledBoundingRectangle.MinAreaRect())
             //az angle -- The angle of the box in degrees. Possitive value means counter-clock wise rotation
@@ -507,8 +525,10 @@ namespace ASAP_WPF
             CvInvoke.GetRotationMatrix2D(center, desiredAngleOfRotation, 1.0, rotatingMat);
 
             //Ez fölösleges, ha tényleg upright az a rectangle !
-            var tempFirst = (double)rotatingMat.GetData().GetValue(0,2) + uprightBondingRectangleMat.Width / 2.0 - angledBoundingRectangle.Size.Width / 2.0;
-            var tempSecond = (double)rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 - angledBoundingRectangle.Size.Height / 2.0;
+            var tempFirst = (double) rotatingMat.GetData().GetValue(0, 2) + uprightBondingRectangleMat.Width / 2.0 -
+                            angledBoundingRectangle.Size.Width / 2.0;
+            var tempSecond = (double) rotatingMat.GetData().GetValue(1, 2) + uprightBondingRectangleMat.Height / 2.0 -
+                             angledBoundingRectangle.Size.Height / 2.0;
 
             //rotatingMat.Data.SetValue(tempFirst,0, 2);
             //rotatingMat.Data.SetValue(tempSecond, 1, 2);
@@ -522,7 +542,7 @@ namespace ASAP_WPF
             //tempMatBeta.Data.SetValue(tempSecond, 0);
 
 
-            rotatingMat.SetValue(2,0,tempFirst);
+            rotatingMat.SetValue(2, 0, tempFirst);
             rotatingMat.SetValue(2, 1, tempSecond);
             //var roiBoundingRectangle = new RotatedRect(center,new SizeF(width,height),boundingRectangle.Angle).MinAreaRect();
 
@@ -579,9 +599,11 @@ namespace ASAP_WPF
 
             //CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, uprightBondingRectangleMat.Size);
 
-            var tempSize = ogSize.Width > ogSize.Height ? new Size(ogSize.Width, ogSize.Height) : new Size(ogSize.Height, ogSize.Width);
+            var tempSize = ogSize.Width > ogSize.Height
+                ? new Size(ogSize.Width, ogSize.Height)
+                : new Size(ogSize.Height, ogSize.Width);
 
-            CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, tempSize);
+            CvInvoke.WarpAffine(uprightBondingRectangleMat, matToReturn, rotatingMat, tempSize);
 
             return matToReturn;
         }
@@ -597,7 +619,7 @@ namespace ASAP_WPF
             var tempB = new Point(0);
             var tempSize = new Size(cornerB.X - cornerA.X, cornerB.Y - cornerA.Y);
             var roiRectangle = new Rectangle(cornerA, tempSize);
-            var roiMat = new Mat(matToMeasure,roiRectangle);
+            var roiMat = new Mat(matToMeasure, roiRectangle);
             //MVCRect tempRect = new MVSRect();
 
             //roiMat = roiMat(roiRectangle);
@@ -631,9 +653,11 @@ namespace ASAP_WPF
             if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
 
             var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(uprightBondingRectangleMat, 5);
-            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(), "GetPointsOfWidestSliceOfCell_biggestAreaWindow");
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCell_biggestAreaWindow");
             var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindow(biggestAreaWindow, 1);
-            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(), "GetPointsOfWidestSliceOfCell_biggestAreaRow");
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCell_biggestAreaRow");
             var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
 
             return secondOffset - firstOffset;
@@ -652,36 +676,54 @@ namespace ASAP_WPF
         {
             var firstSlice = new List<int>();
             var secondSlice = new List<int>();
+            var listPointer = firstSlice;
             var firstWhiteFound = false;
-            var firstBlackAfterFirstSlice = false;
+            var firstBlackAfterFirstSliceFound = false;
+            var prevPixelVal = -1;
 
-            if(matToMeasure.Rows > 1) throw new Exception("Given Mat contains more than on row");
+            if (matToMeasure.Rows > 1) throw new Exception("Given Mat contains more than on row");
             var tempRow = matToMeasure.Row(0);
             for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
             {
-                var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
-                if (WHITE_PIXEL != tempValue) continue;
+                var tempValue = (byte) tempRow.GetData().GetValue(0, colIdx);
+                if (colIdx > 0) prevPixelVal = (byte)tempRow.GetData().GetValue(0, colIdx - 1);
+                //if (!firstBlackAfterFirstSliceFound && WHITE_PIXEL != tempValue) continue;
                 if (!firstWhiteFound) firstWhiteFound = true;
-                firstSlice.Add(colIdx);
-                if (!firstWhiteFound) continue;
-                if (!firstBlackAfterFirstSlice && BLACK_PIXEL == tempValue) firstBlackAfterFirstSlice = true;
-                if(firstBlackAfterFirstSlice && WHITE_PIXEL == tempValue) secondSlice.Add(colIdx);
+                if (!firstBlackAfterFirstSliceFound && WHITE_PIXEL == tempValue)
+                {
+                    listPointer.Add(colIdx);
+                }
+                //if (!firstWhiteFound) continue;
+                if (!firstBlackAfterFirstSliceFound && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
+                {
+                    firstBlackAfterFirstSliceFound = true;
+                    listPointer = secondSlice;
+                }
+
+                if (firstBlackAfterFirstSliceFound && WHITE_PIXEL == tempValue)
+                {
+                    listPointer.Add(colIdx);
+                }
             }
+
             return (firstSlice[firstSlice.Count / 2], secondSlice[secondSlice.Count / 2]);
         }
 
         public static (Mat, Mat) SliceMatInHalfHorizontally(this Mat matToSlice)
-        {//https://answers.opencv.org/question/82641/dividing-image-horizontally-into-equal-parts/
+        {
+            //https://answers.opencv.org/question/82641/dividing-image-horizontally-into-equal-parts/
 
-            if(matToSlice.Rows < 2) throw new Exception("Given matrix has 1 or no rows!");
-            var upperHalfRectFirstPoint = new Point(0,0);
+            if (matToSlice.Rows < 2) throw new Exception("Given matrix has 1 or no rows!");
+            var upperHalfRectFirstPoint = new Point(0, 0);
             var upperHalfRectSecondPoint = new Point(matToSlice.Cols, matToSlice.Rows / 2);
-            var firstTempSize = new Size(upperHalfRectSecondPoint.X - upperHalfRectFirstPoint.X, upperHalfRectSecondPoint.Y - upperHalfRectFirstPoint.Y);
+            var firstTempSize = new Size(upperHalfRectSecondPoint.X - upperHalfRectFirstPoint.X,
+                upperHalfRectSecondPoint.Y - upperHalfRectFirstPoint.Y);
             var upperHalfRect = new Rectangle(upperHalfRectFirstPoint, firstTempSize);
 
             var lowerHalfRectFirstPoint = new Point(0, upperHalfRect.Height);
             var lowerHalfRectSecondPoint = new Point(matToSlice.Cols, matToSlice.Rows - upperHalfRect.Height);
-            var secondTempSize = new Size(lowerHalfRectSecondPoint.X - lowerHalfRectFirstPoint.X, lowerHalfRectSecondPoint.Y - lowerHalfRectFirstPoint.Y);
+            var secondTempSize = new Size(lowerHalfRectSecondPoint.X - lowerHalfRectFirstPoint.X,
+                lowerHalfRectSecondPoint.Y - lowerHalfRectFirstPoint.Y);
             var lowerHalfRect = new Rectangle(lowerHalfRectFirstPoint, secondTempSize);
 
             var upperHalf = new Mat(matToSlice, upperHalfRect);
@@ -689,14 +731,15 @@ namespace ASAP_WPF
 
             //Talán kellene a RowRange, mert az o1
 
-            if(upperHalf.Height + upperHalf.Height != matToSlice.Height) throw new Exception("Separated halves summed height does not equal the original matrix height!");
+            if (upperHalf.Height + upperHalf.Height != matToSlice.Height)
+                throw new Exception("Separated halves summed height does not equal the original matrix height!");
 
             return (upperHalf, lowerHalf);
         }
 
         public static (Mat, Mat) SliceMatInHalfHorizontallyUsingRange(this Mat matToSlice)
         {
-            var upperHalf = GetRowsFromRange(matToSlice,0, matToSlice.Rows / 2);
+            var upperHalf = GetRowsFromRange(matToSlice, 0, matToSlice.Rows / 2);
             var lowerHalf = GetRowsFromRange(matToSlice, matToSlice.Rows - upperHalf.Height, matToSlice.Rows);
             return (upperHalf, lowerHalf);
         }
@@ -709,17 +752,20 @@ namespace ASAP_WPF
         }
 
         public static (Mat, Mat) SliceMatInHalfVertically(this Mat matToSlice)
-        {//https://answers.opencv.org/question/82641/dividing-image-horizontally-into-equal-parts/
+        {
+            //https://answers.opencv.org/question/82641/dividing-image-horizontally-into-equal-parts/
             //leget ezt is range-gel kellene?
             if (matToSlice.Cols < 2) throw new Exception("Given matrix has 1 or no rows!");
             var leftHalfRectFirstPoint = new Point(0, 0);
-            var leftHalfRectSecondPoint = new Point(matToSlice.Cols / 2, matToSlice.Height );
-            var firstTempSize = new Size(leftHalfRectSecondPoint.X - leftHalfRectFirstPoint.X, leftHalfRectSecondPoint.Y - leftHalfRectFirstPoint.Y);
+            var leftHalfRectSecondPoint = new Point(matToSlice.Cols / 2, matToSlice.Height);
+            var firstTempSize = new Size(leftHalfRectSecondPoint.X - leftHalfRectFirstPoint.X,
+                leftHalfRectSecondPoint.Y - leftHalfRectFirstPoint.Y);
             var leftHalfRect = new Rectangle(leftHalfRectFirstPoint, firstTempSize);
 
             var rightHalfRectFirstPoint = new Point(0, leftHalfRect.Width);
             var rightHalfRectSecondPoint = new Point(matToSlice.Cols, matToSlice.Cols - leftHalfRect.Width);
-            var secondTempSize = new Size(rightHalfRectSecondPoint.X - rightHalfRectFirstPoint.X, rightHalfRectSecondPoint.Y - rightHalfRectFirstPoint.Y);
+            var secondTempSize = new Size(rightHalfRectSecondPoint.X - rightHalfRectFirstPoint.X,
+                rightHalfRectSecondPoint.Y - rightHalfRectFirstPoint.Y);
             var rightHalfRect = new Rectangle(rightHalfRectFirstPoint, secondTempSize);
 
             var leftHalf = new Mat(matToSlice, leftHalfRect);
@@ -727,7 +773,8 @@ namespace ASAP_WPF
 
             //Talán kellene a RowRange, mert az o1
 
-            if (leftHalf.Height + leftHalf.Height != matToSlice.Height) throw new Exception("Separated halves summed height does not equal the original matrix height!");
+            if (leftHalf.Height + leftHalf.Height != matToSlice.Height)
+                throw new Exception("Separated halves summed height does not equal the original matrix height!");
 
             return (leftHalf, rightHalf);
         }
@@ -737,68 +784,81 @@ namespace ASAP_WPF
         //https://stackoverflow.com/questions/26279853/how-to-store-all-the-pixels-within-a-rotatedrect-to-another-matrix/26284491#26284491
         public static int GetAreaOfCellSlice(this Mat matToMeasure)
         {
-            var foundFirstWhitePixelInFrontOfCell = false;
-            var foundLastWhitePixelInFrontOfCell = false;
-            var foundLastBlackPixelOfCell = false;
-            var counter = 0;
+            var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
+            var foundLastWhitePixelInFrontOfCellInGivenRow = false;
+            //var foundLastBlackPixelOfCellInGivenRow = false;
+            var counterOfSlice = 0;
 
             var prevPixelVal = -1;
 
-            if(matToMeasure.NumberOfChannels > 1) throw new Exception("Given matrix does not contain a greyscale picture!");
-            //var tempArray = matToMeasure.Data;
-            /*
-            for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
+            if (matToMeasure.NumberOfChannels > 1)
+                throw new Exception("Given matrix does not contain a greyscale picture!");
 
+            var nonZeroPixelNum = CvInvoke.CountNonZero(matToMeasure);
+            if (nonZeroPixelNum == 0) throw new Exception("Given image in the matrix has no proper threshold applied! - Only black pixels in Matrix!");
+            var segmentationSet = new HashSet<byte>();
+            foreach (var rowElement in matToMeasure.GetData())
             {
-                for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
+                var tempValue = (byte) rowElement;
+                if (segmentationSet.Contains(tempValue)) continue;
+                segmentationSet.Add(tempValue);
+                if (segmentationSet.Count > 2)
                 {
-                    var tempValue = (int)matToMeasure.GetData().GetValue(colIdx, rowIdx, 0);
-                    if(0 < tempValue || tempValue < 255 ) throw new Exception("Given image in the matrix has no proper threshold applied!");
-                    //if (tempValue == 255) counter++;
-
+                    throw new Exception("Given image in the matrix has no proper threshold applied! - More than two values in segmented Matrix!");
                 }
-            }*/
+            }
+
+            if (!(segmentationSet.Remove(BLACK_PIXEL) && segmentationSet.Remove(WHITE_PIXEL)))
+            {
+                throw new Exception("Given image in the matrix has no proper threshold applied! - The two segmentation values were not equal to BLACK_PIXEL and WHITE_PIXEL values");
+            }
 
             for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
             {
                 var tempRow = matToMeasure.Row(rowIdx);
+                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
+                if (nonZeroPixelNumForRow == 0) continue;
+
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
-                    var nonZeroPixelNum = CvInvoke.CountNonZero(tempRow);
-                    if (nonZeroPixelNum == 0) continue;
                     //var tempObject = tempRow.GetData().GetValue(0, colIdx);
-                    var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
-                    if ( colIdx > 0) prevPixelVal = (byte)tempRow.GetData().GetValue(0, colIdx-1);
+                    var tempValue = (byte) tempRow.GetData().GetValue(0, colIdx);
+                    if (colIdx > 0) prevPixelVal = (byte) tempRow.GetData().GetValue(0, colIdx - 1);
 
-                    //Helyette inkább majd http://www.emgu.com/wiki/files/3.1.0/document/html/1293f167-1f50-82a2-14f0-5cbd3fff67a4.htm
-                    if (!(BLACK_PIXEL < tempValue || tempValue < WHITE_PIXEL)) throw new Exception("Given image in the matrix has no proper threshold applied!");
-                    if (!foundFirstWhitePixelInFrontOfCell && WHITE_PIXEL == tempValue)
+                    if (!foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
                     {
-                        foundFirstWhitePixelInFrontOfCell = true;
+                        continue;
                     }
 
-                    if (foundFirstWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
+                    if (!foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
                     {
-                        foundLastWhitePixelInFrontOfCell = true;
+                        foundFirstWhitePixelInFrontOfCellInGivenRow = true;
                     }
 
-                    if (BLACK_PIXEL == prevPixelVal && WHITE_PIXEL == tempValue)
+                    if (foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
                     {
-                        foundLastBlackPixelOfCell = true;
+                        foundLastWhitePixelInFrontOfCellInGivenRow = true;
                     }
 
-                    if (!foundLastBlackPixelOfCell && foundLastWhitePixelInFrontOfCell && BLACK_PIXEL == tempValue)
+                    if (foundLastWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
                     {
-                        counter++;
+                        counterOfSlice++;
                     }
 
+                    if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
+                    //foundLastBlackPixelOfCellInGivenRow = true;
+                    foundFirstWhitePixelInFrontOfCellInGivenRow = false;
+                    foundLastWhitePixelInFrontOfCellInGivenRow = false;
+                    //foundLastBlackPixelOfCellInGivenRow = false;
+                    prevPixelVal = -1;
+                    break;
                 }
             }
-
-            return counter;
+            return counterOfSlice;
         }
 
-        //https://stackoverflow.com/questions/4122527/sliding-window-minimum-algorithm
+
+    //https://stackoverflow.com/questions/4122527/sliding-window-minimum-algorithm
         //Az nem derült ki, hogy mekkora legyen a sliding window mérete, de lehet azt paraméterezni kellene, és kezdjük öttel
 
         public static Mat GetBiggestAreaOfCellWithSlidingWindow(this Mat matToMeasure, int slidingWindowSize)
