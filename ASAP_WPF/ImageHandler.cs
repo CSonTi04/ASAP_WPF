@@ -676,7 +676,7 @@ namespace ASAP_WPF
             var rotatedRoiMat = roiMat.RotateMatWithoutCutoff(tempRect);
             //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
             //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
-            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
+            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPx();
             if (!CellLengths.ContainsKey(contour))
             {
                 CellLengths.Add(contour, sizeInPx);
@@ -727,7 +727,40 @@ namespace ASAP_WPF
             MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMatAlt.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMatAlt");
             //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
             //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
-            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPX();
+            var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPx();
+            var sizeEndPoint = rotatedRoiMat.GetPointsOfWidestSliceOfCell();
+            var angledBoundingRectangle = CvInvoke.MinAreaRect(contour);
+
+            //The order is bottomLeft, topLeft, topRight, bottomRight.
+            //Remélhetőleg ez tényleg így van
+
+            var newContour = rotatedRoiMat.DetectOnlyCellInMat();
+
+
+            // ez mindig a legalsó pontot fogja elöszőpr visszaadni aztán onnan kezd majd el az óramutat járásáával ellentétesen végig menni rajtuk
+
+
+            //var ogBBoxPoints = angledBoundingRectangle.GetVertices().ReorderBoxPoints();
+            var ogBBoxPoints = angledBoundingRectangle.GetVertices();
+            var ogBBoxSize = angledBoundingRectangle.Size;
+
+            //var bBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices().ReorderBoxPoints();
+            var bBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices();
+            var bBoxSize = CvInvoke.MinAreaRect(newContour).Size;
+
+            
+
+            var rotationMat = newRoiMat.RotMatOnly(contour,0);
+
+            var locTriangleOne = new LocatorTriangle(bBoxPoints[0], bBoxPoints[1],sizeEndPoint.Item1);
+            locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[2]);
+            locTriangleOne.CalculateNewPPositionReverseAffine(rotationMat);
+            var locTriangleTwo = new LocatorTriangle(bBoxPoints[2], bBoxPoints[3], sizeEndPoint.Item2);
+            locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[1], ogBBoxPoints[3]);
+            locTriangleTwo.CalculateNewPPositionReverseAffine(rotationMat);
+
+
+
             //var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
 
             //var sizeInPx = -1;

@@ -33,7 +33,7 @@ namespace ASAP_WPF
         public VectorOfVectorOfPoint AngledBoundingBoxesToReturn{ get; set; }
         //public List<Rectangle> UprightBoundingRectangles { get; set; }
 
-       
+
 
 
         public void SetValues(Mat imgMat, int @const)
@@ -194,6 +194,6 @@ namespace ASAP_WPF
             CvInvoke.Imwrite(exportPath, this.ImageMat);
         }
 
-       
+
     }
 }

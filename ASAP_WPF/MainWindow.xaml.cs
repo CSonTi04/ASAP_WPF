@@ -465,8 +465,8 @@ namespace ASAP_WPF
             {
                 desiredAngleOfRotation = 90 + desiredAngleOfRotation;
             }
-            CurrCellLengthAngle.Text = desiredAngleOfRotation.ToString(CultureInfo.InvariantCulture);
-            CurrCellLengthAngle.Background = Brushes.Orange;
+            //CurrCellLengthAngle.Text = desiredAngleOfRotation.ToString(CultureInfo.InvariantCulture);
+            //CurrCellLengthAngle.Background = Brushes.Orange;
 
             ImageHandler.PrintAllTypeOfCellLengthToDebug(LastClickedPoint);
         }
@@ -490,8 +490,8 @@ namespace ASAP_WPF
             CurrCellLengthBox.Background = Brushes.IndianRed;
             CurrCellLengthCoordinates.Text = "";
             CurrCellLengthCoordinates.Background = Brushes.IndianRed;
-            CurrCellLengthAngle.Text = "";
-            CurrCellLengthAngle.Background = Brushes.IndianRed;
+            //CurrCellLengthAngle.Text = "";
+            //CurrCellLengthAngle.Background = Brushes.IndianRed;
         }
     }
 }

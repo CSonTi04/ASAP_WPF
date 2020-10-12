@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.RightsManagement;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,6 +13,8 @@ using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Point = System.Drawing.Point;
 using Size = System.Drawing.Size;
+using System.Linq.Dynamic.Core;
+using System.Windows.Documents;
 
 namespace ASAP_WPF
 {
@@ -81,6 +84,84 @@ namespace ASAP_WPF
             var cy = moment.M01 / moment.M00;
             var tempPoint = new PointF((float) cx, (float) cy);
             return tempPoint;
+        }
+
+        public static VectorOfPoint DetectOnlyCellInMat(this Mat matToSample)
+        {
+            var contours = new VectorOfVectorOfPoint();
+            var contoursToReturn = new VectorOfVectorOfPoint();
+            var hierarchy = new Mat();
+            CvInvoke.FindContours(matToSample, contours, hierarchy, Emgu.CV.CvEnum.RetrType.Tree, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
+
+            for (var idx = 0; idx < contours.Size; idx++)
+            {
+                var con = contours[idx];
+                if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
+                {
+                    continue;
+                }
+                contoursToReturn.Push(con);
+            }
+
+            if(contoursToReturn.Size > 1) throw new Exception("More than one complete contour in ROI!");
+
+            return contoursToReturn[0];
+        }
+
+        public static Mat RotMatOnly(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
+        {
+            var matToReturn = new Mat();
+
+            var angledBoundingRectangle = CvInvoke.MinAreaRect(contour);
+            var ogRoiHeight = uprightBondingRectangleMat.Height;
+            var ogRoiWidth = uprightBondingRectangleMat.Width;
+
+            var newRoiSideLength = ogRoiWidth > ogRoiHeight ? ogRoiWidth * Math.Sqrt(2) : ogRoiHeight * Math.Sqrt(2);
+
+            var ogBBoxHeight = angledBoundingRectangle.Size.Height;
+            var ogBBoxWidth = angledBoundingRectangle.Size.Width;
+            //var actualBBoxWidth = ogBBoxWidth > ogBBoxHeight ? ogBBoxWidth : ogBBoxHeight;
+            //var actualBBoxHeight = ogBBoxWidth > ogBBoxHeight ? ogBBoxHeight : ogBBoxWidth;
+
+            var oldRoi = uprightBondingRectangleMat;
+
+            var newRoi = Mat.Zeros((int)newRoiSideLength, (int)newRoiSideLength, uprightBondingRectangleMat.Depth, 1);
+            var newRoiCenter = new PointF((float)(newRoiSideLength / 2.0 - 0.5),
+                (float)(newRoiSideLength / 2.0f - 0.5f));
+
+            var rowOffset = newRoi.Rows / 2 - oldRoi.Rows / 2;
+            var colOffset = newRoi.Cols / 2 - oldRoi.Cols / 2;
+
+            var rowRange = new Range(rowOffset, rowOffset + oldRoi.Rows);
+            var colRange = new Range(colOffset, colOffset + oldRoi.Cols);
+
+            var newRoiViewPort = new Mat(newRoi, rowRange, colRange);
+
+            oldRoi.CopyTo(newRoiViewPort);
+
+            MainWindow.ImageProcessorExaminer.AddImage(oldRoi.CreateNewHardCopyFromMat(), "RotMat_oldRoi");
+            MainWindow.ImageProcessorExaminer.AddImage(newRoi.CreateNewHardCopyFromMat(), "RotMat_newRoi");
+
+            //var ogRoiCenter = new PointF((ogRoiWidth / 2f - 0.5f), (ogRoiHeight / 2.0f - 0.5f));
+
+            /*var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            if (ogBBoxWidth < ogBBoxHeight)
+            {
+                desiredAngleOfRotation = 90 + desiredAngleOfRotation;
+
+            }*/
+
+            var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            if (ogBBoxWidth < ogBBoxHeight)
+            {
+                desiredAngleOfRotation = angledBoundingRectangle.Angle - 90.0;
+
+            }
+
+            var rotatingMat = new Mat();
+            CvInvoke.GetRotationMatrix2D(newRoiCenter, desiredAngleOfRotation, 1.0, rotatingMat);
+
+            return rotatingMat;
         }
 
         public static Mat RotMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
@@ -267,6 +348,27 @@ namespace ASAP_WPF
             matToReturn = tempMatTwo;
             return matToReturn;
         }*/
+
+        public static Mat DrawPixelsToMat(this Mat matToDrawOn, VectorOfPoint pixels)
+        {
+            //https://stackoverflow.com/questions/49799057/how-to-draw-a-point-in-an-image-using-given-co-ordinate-with-python-opencv
+            var modifiedMat = matToDrawOn.CreateNewHardCopyFromMat();
+            foreach (var point in pixels.ToArray())
+            {
+                CvInvoke.Circle(modifiedMat,point,0,new MCvScalar(127,127,127),-1);
+            }
+
+            return modifiedMat;
+        }
+
+        public static PointF[] ReorderBoxPoints(this PointF[] ogArray)
+        {
+            //https://stackoverflow.com/questions/298725/multiple-order-by-in-linq
+            var points = ogArray.OrderByDescending(point => point.Y).ThenByDescending(point => point.X).ToList();
+            //m => new { m.CategoryID, m.Name }
+
+            return points.ToArray();
+        }
 
         public static Mat RotateMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
         {
@@ -608,31 +710,76 @@ namespace ASAP_WPF
             return matToReturn;
         }
 
-        public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat matToMeasure, Point cornerA, Point cornerB)
+        public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat matToMeasure)
         {
             //Kell majd hozzá a bounding box
             //https://stackoverflow.com/questions/15043152/rotate-opencv-matrix-by-90-180-270-degrees
             //https://jayrambhia.wordpress.com/2012/09/20/roi-bounding-box-selection-of-mat-images-in-opencv/
             //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
             //var roiMat = matToMeasure.CreateNewHardCopyFromMat();
-            var tempA = new Point(0);
-            var tempB = new Point(0);
-            var tempSize = new Size(cornerB.X - cornerA.X, cornerB.Y - cornerA.Y);
-            var roiRectangle = new Rectangle(cornerA, tempSize);
-            var roiMat = new Mat(matToMeasure, roiRectangle);
+            //var tempA = new Point(0);
+            //var tempB = new Point(0);
+            //var tempSize = new Size(cornerB.X - cornerA.X, cornerB.Y - cornerA.Y);
+            //var roiRectangle = new Rectangle(cornerA, tempSize);
+            //var roiMat = new Mat(matToMeasure, roiRectangle);
             //MVCRect tempRect = new MVSRect();
 
             //roiMat = roiMat(roiRectangle);
+            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndex(matToMeasure, 5);
+            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndex(biggestAreaWindowAndIdx.Item1, 1);
+            var pointPair = biggestAreaRowAndId.Item1.GetCenterIdxOfDiffractionLineSlice();
 
-            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(roiMat, 5);
-            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindow(biggestAreaWindow, 1);
-            var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
+            var rowIdx = biggestAreaWindowAndIdx.Item2 + biggestAreaRowAndId.Item2;
 
-            return (tempA, tempB);
+            var tempPointA = new Point(pointPair.Item1, rowIdx);
+            var tempPointB = new Point(pointPair.Item2,rowIdx);
+
+            var points = new VectorOfPoint();
+            points.Push(new []{tempPointA,tempPointB});
+
+            var pointsVoVo = new VectorOfVectorOfPoint();
+            var temp = new VectorOfPoint();
+            temp.Push(new[] { tempPointA });
+            pointsVoVo.Push(temp);
+             temp = new VectorOfPoint();
+            temp.Push(new[] { tempPointB });
+            pointsVoVo.Push(temp);
+
+            // CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
+
+            var newContour = matToMeasure.DetectOnlyCellInMat();
+            var tempBBox = CvInvoke.MinAreaRect(newContour);
+            var boxpoints = tempBBox.GetVertices();
+            points.Push(boxpoints.ConvertToPointArray());
+            //var VONewContour = new VectorOfVectorOfPoint();
+            //VONewContour.Push(newContour);
+
+            var markedMat = matToMeasure.CreateNewHardCopyFromMat();
+            //CvInvoke.DrawContours(markedMat, VONewContour, 0, new MCvScalar(127, 127, 127), 2);
+
+            markedMat = DrawPixelsToMat(matToMeasure, points);
+
+            MainWindow.ImageProcessorExaminer.AddImage(markedMat.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCell_PointsMarked");
+
+            return (tempPointA, tempPointB);
+        }
+
+        public static Point[] ConvertToPointArray(this PointF[] ogArray)
+        {
+            var tempPointArray = new Point[ogArray.Length];
+
+            for (var i = 0; i < ogArray.Length; i++)
+            {
+                var ogItem = ogArray[i];
+                tempPointArray[i] = new Point((int)ogItem.X, (int)ogItem.Y);
+            }
+
+            return tempPointArray;
         }
 
         //public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat uprightBondingRectangleMat)
-        public static int GetWidestSliceOfCellLengthInPX(this Mat uprightBondingRectangleMat)
+        public static int GetWidestSliceOfCellLengthInPx(this Mat uprightBondingRectangleMat)
         {
             //var tempA = new Point(0);
             //var tempB = new Point(0);
@@ -881,6 +1028,29 @@ namespace ASAP_WPF
 
             return returnMat;
         }
+
+        public static (Mat,int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndex(this Mat matToMeasure, int slidingWindowSize)
+        {
+            var biggestAreSoFar = -1;
+            var rowIdxToReturn = -1;
+            var returnMat = new Mat();
+            //var slidingWindowMat = new Mat();
+
+
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
+            {
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
+                var slidingWindowArea = slidingWindowMat.GetAreaOfCellSlice();
+                if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
+                biggestAreSoFar = slidingWindowArea;
+                returnMat = slidingWindowMat;
+                rowIdxToReturn = rowIdx;
+            }
+
+            return (returnMat, rowIdxToReturn);
+        }
         //kell majd ilyen in and out dolog, hogy a koordináták ne vesszenek el
         public static Mat GetRowsFromRange(this Mat matToSlice, int rowStartIdx, int rowEndIdx)
         {
@@ -965,6 +1135,18 @@ namespace ASAP_WPF
 
             return returnVal;
         }
+
+    public static PointF Multiply(this PointF basePointF, double amount)
+    {
+        var tempPointF = new PointF(basePointF.X * (float)amount, basePointF.Y * (float)amount);
+        return tempPointF;
+    }
+
+    public static PointF Add(this PointF basePointA, PointF basePointB)
+    {
+        var tempPointF = new PointF(basePointA.X + basePointB.X, basePointA.Y + basePointB.Y);
+        return tempPointF;
+    }
 
     }
 }
