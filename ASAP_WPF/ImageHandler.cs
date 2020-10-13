@@ -745,18 +745,18 @@ namespace ASAP_WPF
             var ogBBoxSize = angledBoundingRectangle.Size;
 
             //var bBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices().ReorderBoxPoints();
-            var bBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices();
-            var bBoxSize = CvInvoke.MinAreaRect(newContour).Size;
+            var refBBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices();
+            var refBBoxSize = CvInvoke.MinAreaRect(newContour).Size;
 
-            
+            ogBBoxPoints = ogBBoxPoints.RotatePointsUntilLengthsAreSame(refBBoxPoints);
 
             var rotationMat = newRoiMat.RotMatOnly(contour,0);
 
-            var locTriangleOne = new LocatorTriangle(bBoxPoints[0], bBoxPoints[1],sizeEndPoint.Item1);
-            locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[2]);
+            var locTriangleOne = new LocatorTriangle(refBBoxPoints[0], refBBoxPoints[1],sizeEndPoint.Item1);
+            locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[1]);
             locTriangleOne.CalculateNewPPositionReverseAffine(rotationMat);
-            var locTriangleTwo = new LocatorTriangle(bBoxPoints[2], bBoxPoints[3], sizeEndPoint.Item2);
-            locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[1], ogBBoxPoints[3]);
+            var locTriangleTwo = new LocatorTriangle(refBBoxPoints[2], refBBoxPoints[3], sizeEndPoint.Item2);
+            locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[2], ogBBoxPoints[3]);
             locTriangleTwo.CalculateNewPPositionReverseAffine(rotationMat);
 
 

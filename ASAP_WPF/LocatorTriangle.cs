@@ -18,6 +18,8 @@ namespace ASAP_WPF
         public PointF TransformedPointBBoxA { get; set; }
         public PointF TransformedPointBBoxB { get; set; }
         public PointF TransformedPointP { get; set; }
+        public PointF TransformedPointPPlus { get; set; }
+        public PointF TransformedPointPMinus { get; set; }
 
         public double AngleA { get;set; }
         public double AngleB { get; set; }
@@ -123,11 +125,11 @@ namespace ASAP_WPF
             var gammaMinusPoint = new PointF(by - ay, ax - by).Multiply(gammaMinus);
             var gammaPlusPoint = new PointF(by - ay, ax - by).Multiply(gammaPlus);
 
-            var PPointMinus = basePoint.Add(beta).Add(gammaMinusPoint);
-            var PPointPlus  = basePoint.Add(beta).Add(gammaPlusPoint);
+            this.TransformedPointPMinus = basePoint.Add(beta).Add(gammaMinusPoint);
+            this.TransformedPointPPlus = basePoint.Add(beta).Add(gammaPlusPoint);
 
 
-            return (PPointMinus, PPointPlus);
+            return (TransformedPointPMinus, TransformedPointPPlus);
         }
 
         public void CalculateNewPPositionReverseAffine(Mat transformationMat)

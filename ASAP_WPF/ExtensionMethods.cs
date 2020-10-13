@@ -778,6 +778,79 @@ namespace ASAP_WPF
             return tempPointArray;
         }
 
+        public static PointF[] LeftShift(this PointF[] array)
+        {
+            // all elements except for the first one... and at the end, the first one. to array.
+            return array.Skip(1).Concat(array.Take(1)).ToArray();
+        }
+
+        public static PointF[] RightShift(this PointF[] array)
+        {
+            // the last element (because we're skipping all but one)... then all but the last one.
+            return array.Skip(array.Length - 1).Concat(array.Take(array.Length - 1)).ToArray();
+        }
+
+        public static PointF[] RotatePointsUntilLengthsAreSame(this PointF[] arrayToRotate, PointF[] reference)
+        {
+            var arrayToReturn = new PointF[arrayToRotate.Length];
+
+            for (var i = 0; i < arrayToRotate.Length; i++)
+            {
+                arrayToReturn[i] = arrayToRotate[i];
+            }
+
+            for (var i = 0; i < arrayToRotate.Length; i++)
+            {
+                if (!arrayToReturn.GetLengthTriplet().LengthTripletIsSameMoreOrLess(reference.GetLengthTriplet()))
+                {
+                    arrayToReturn = arrayToReturn.RightShift();
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return arrayToReturn;
+        }
+
+        public static (double, double, double) GetLengthTriplet(this PointF[] reference)
+        {
+            var length01 = reference[0].CalculateLengthBetweenPoint(reference[1]);
+            var length02 = reference[0].CalculateLengthBetweenPoint(reference[2]);
+            var length03 = reference[0].CalculateLengthBetweenPoint(reference[3]);
+            return (length01, length02, length03);
+        }
+
+        public static bool LengthTripletIsSameMoreOrLess(this (double,double,double) reference, (double, double, double) eval)
+        {
+            var delta1 = Math.Abs(reference.Item1 - eval.Item1);
+            var delta2 = Math.Abs(reference.Item2 - eval.Item2);
+            //Az átlónál nem tudom mi legyen, most legyen gyök kettő < 3
+            var delta3 = Math.Abs(reference.Item2 - eval.Item3);
+
+            var boolToReturn = (delta1 < 1.0 && delta2 < 1.0 && Math.Sqrt(delta3) < 4.0);
+
+            return boolToReturn;
+        }
+
+        public static double CalculateLengthBetweenPoint(this PointF first, PointF second)
+        {
+            var length = double.NaN;
+            var alpha = double.NaN;
+            var beta = double.NaN;
+
+            alpha = first.X - second.X;
+            alpha = Math.Pow(alpha, 2);
+
+            beta = first.Y - second.Y;
+            beta = Math.Pow(beta, 2);
+
+            length = alpha + beta;
+            length = Math.Sqrt(length);
+            return length;
+        }
+
         //public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat uprightBondingRectangleMat)
         public static int GetWidestSliceOfCellLengthInPx(this Mat uprightBondingRectangleMat)
         {
