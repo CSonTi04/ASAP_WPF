@@ -78,7 +78,56 @@ namespace ASAP_WPF
             return angle;
         }
 
-        public (PointF,PointF) CalculateNewPPosition(PointF newA,PointF newB)
+        public (PointF, PointF) CalculateNewPPosition(PointF newA, PointF newB)
+        {
+            this.TransformedPointBBoxA = newA;
+            this.TransformedPointBBoxB = newB;
+
+            var ax = newA.X;
+            var ay = newA.Y;
+            var bx = newB.X;
+            var by = newB.Y;
+
+            var d = CalculateLengthBetweenPoint(TransformedPointBBoxA, TransformedPointBBoxB);
+            var l = (Math.Pow(LengthAP,2) - Math.Pow(LengthBP, 2) + Math.Pow(d,2)) / (2.0 * d);
+            var h = Math.Sqrt(Math.Pow(LengthAP, 2) - Math.Pow(l,2));
+
+            var plusX  = ((( l / d) * (bx - ax)) + ((h / d) * (by - ay)) + ax);
+            var plusY  = ((( l / d) * (by - ay)) + ((h / d) * (bx - ax)) + ay);
+            var minusX = ((( l / d) * (bx - ax)) - ((h / d) * (by - ay)) + ax);
+            var minusY = ((( l / d) * (by - ay)) - ((h / d) * (bx - ax)) + ay);
+
+            this.TransformedPointPMinus = new PointF((float)minusX, (float)plusY);
+            this.TransformedPointPPlus  = new PointF((float)plusX,(float)minusY);
+
+            //var reference = CalculateNewPPositionAlter(newA, newB);
+            var reference = CalculateNewPPositionRef(PointBBoxA, PointBBoxB);
+            return (TransformedPointPMinus, TransformedPointPPlus);
+        }
+
+        public (PointF, PointF) CalculateNewPPositionRef(PointF newA, PointF newB)
+        {
+            var ax = newA.X;
+            var ay = newA.Y;
+            var bx = newB.X;
+            var by = newB.Y;
+
+            var d = CalculateLengthBetweenPoint(TransformedPointBBoxA, TransformedPointBBoxB);
+            var l = (Math.Pow(LengthAP, 2) - Math.Pow(LengthBP, 2) + Math.Pow(d, 2)) / (2.0 * d);
+            var h = Math.Sqrt(Math.Pow(LengthAP, 2) - Math.Pow(l, 2));
+
+            var plusX = (((l / d) * (bx - ax)) + ((h / d) * (by - ay)) + ax);
+            var plusY = (((l / d) * (by - ay)) + ((h / d) * (bx - ax)) + ay);
+            var minusX = (((l / d) * (bx - ax)) - ((h / d) * (by - ay)) + ax);
+            var minusY = (((l / d) * (by - ay)) - ((h / d) * (bx - ax)) + ay);
+
+            var PointPMinus = new PointF((float)minusX, (float)plusY);
+            var PointPPlus = new PointF((float)plusX, (float)minusY);
+
+            return (PointPMinus, PointPPlus);
+        }
+
+        public (PointF,PointF) CalculateNewPPositionAlter(PointF newA,PointF newB)
         {
             //http://paulbourke.net/geometry/circlesphere/
             //https://math.stackexchange.com/questions/543961/determine-third-point-of-triangle-when-two-points-and-all-sides-are-known
@@ -127,8 +176,8 @@ namespace ASAP_WPF
             var gammaMinusPoint = new PointF(by - ay, ax - bx).Multiply(gammaMinus);
             var gammaPlusPoint = new PointF(by - ay, ax - bx).Multiply(gammaPlus);
 
-            this.TransformedPointPMinus = basePoint.Add(beta).Add(gammaMinusPoint);
-            this.TransformedPointPPlus = basePoint.Add(beta).Add(gammaPlusPoint);
+            var TransformedPointPMinus = basePoint.Add(beta).Add(gammaMinusPoint);
+            var TransformedPointPPlus = basePoint.Add(beta).Add(gammaPlusPoint);
 
 
             return (TransformedPointPMinus, TransformedPointPPlus);

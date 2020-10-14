@@ -760,7 +760,8 @@ namespace ASAP_WPF
             //locTriangleTwo.CalculateNewPPositionReverseAffine(rotationMat);
 
             var points = new VectorOfPointF();
-            points.Push(new PointF[]{ locTriangleOne.TransformedPointPMinus, locTriangleOne.TransformedPointPPlus , locTriangleTwo.TransformedPointPMinus, locTriangleTwo.TransformedPointPPlus });
+            //points.Push(new PointF[]{ locTriangleOne.TransformedPointPMinus, locTriangleOne.TransformedPointPPlus , locTriangleTwo.TransformedPointPMinus, locTriangleTwo.TransformedPointPPlus });
+            points.Push(new PointF[] {  locTriangleOne.TransformedPointPPlus, locTriangleTwo.TransformedPointPPlus });
             this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(points.ConvertToVectorOfPoint(), new MCvScalar(0,0,255));
 
             //var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();

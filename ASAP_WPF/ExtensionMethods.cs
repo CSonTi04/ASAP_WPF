@@ -371,9 +371,11 @@ namespace ASAP_WPF
         {
             //https://stackoverflow.com/questions/49799057/how-to-draw-a-point-in-an-image-using-given-co-ordinate-with-python-opencv
             var modifiedMat = matToDrawOn.CreateNewHardCopyFromMat();
+            var color = new MCvScalar(127,127,127);
             foreach (var point in pixels.ToArray())
             {
-                CvInvoke.Circle(modifiedMat,point,0,new MCvScalar(127,127,127),-1);
+                CvInvoke.Circle(modifiedMat, point, 0, color, -1);
+                CvInvoke.Circle(modifiedMat, point, 3, color, 1);
             }
 
             return modifiedMat;
