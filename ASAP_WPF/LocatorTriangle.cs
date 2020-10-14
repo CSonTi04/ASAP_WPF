@@ -118,11 +118,11 @@ namespace ASAP_WPF
             var basePoint = new PointF(ax + bx, ay + by).Multiply(0.5);
             var alpha = (Math.Pow(r1, 2) - Math.Pow(r2, 2)) /( 2 * Math.Pow(R, 2));
             var beta = new PointF(bx -ax, by-ay).Multiply(alpha);
-            var delta = 
-                Math.Sqrt(2 * ( (Math.Pow(r1, 2) + Math.Pow(r2, 2))  
+            var delta =
+                Math.Sqrt(2 * ( (Math.Pow(r1, 2) + Math.Pow(r2, 2))
                 / (Math.Pow(R, 2))) - (Math.Pow(Math.Pow(r1, 2) - Math.Pow(r2, 2), 2) / (Math.Pow(R, 4)) -1));
-            var gammaMinus = -(1 / 2) * delta;
-            var gammaPlus  = +(1 / 2) * delta;
+            var gammaMinus = -(0.5) * delta;
+            var gammaPlus  = +(0.5) * delta;
 
             var gammaMinusPoint = new PointF(by - ay, ax - bx).Multiply(gammaMinus);
             var gammaPlusPoint = new PointF(by - ay, ax - bx).Multiply(gammaPlus);

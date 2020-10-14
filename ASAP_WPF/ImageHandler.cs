@@ -750,16 +750,18 @@ namespace ASAP_WPF
 
             ogBBoxPoints = ogBBoxPoints.RotatePointsUntilLengthsAreSame(refBBoxPoints);
 
-            var rotationMat = newRoiMat.RotMatOnly(contour,0);
+            //var rotationMat = newRoiMat.RotMatOnly(contour,0);
 
             var locTriangleOne = new LocatorTriangle(refBBoxPoints[0], refBBoxPoints[1],sizeEndPoint.Item1);
             locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[1]);
-            locTriangleOne.CalculateNewPPositionReverseAffine(rotationMat);
+            //locTriangleOne.CalculateNewPPositionReverseAffine(rotationMat);
             var locTriangleTwo = new LocatorTriangle(refBBoxPoints[2], refBBoxPoints[3], sizeEndPoint.Item2);
             locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[2], ogBBoxPoints[3]);
-            locTriangleTwo.CalculateNewPPositionReverseAffine(rotationMat);
+            //locTriangleTwo.CalculateNewPPositionReverseAffine(rotationMat);
 
-
+            var points = new VectorOfPointF();
+            points.Push(new PointF[]{ locTriangleOne.TransformedPointPMinus, locTriangleOne.TransformedPointPPlus , locTriangleTwo.TransformedPointPMinus, locTriangleTwo.TransformedPointPPlus });
+            this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(points.ConvertToVectorOfPoint(), new MCvScalar(0,0,255));
 
             //var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
 

@@ -68,6 +68,24 @@ namespace ASAP_WPF
             return vectorToReturn;
         }
 
+        public static VectorOfPoint ConvertToVectorOfPoint(this VectorOfPointF vectorToTransform)
+        {
+            var vectorToReturn = new VectorOfPoint();
+            var vectorArrayOfArray = vectorToTransform.ToArray();
+            var tempList = vectorArrayOfArray.Select(point => new Point((int) point.X, (int) point.Y)).ToList();
+            vectorToReturn.Push(tempList.ToArray());
+            return vectorToReturn;
+        }
+
+        public static VectorOfPointF ConvertToVectorOfPoint(this VectorOfPoint vectorToTransform)
+        {
+            var vectorToReturn = new VectorOfPointF();
+            var vectorArrayOfArray = vectorToTransform.ToArray();
+            var tempList = vectorArrayOfArray.Select(point => new PointF(point.X,point.Y)).ToList();
+            vectorToReturn.Push(tempList.ToArray());
+            return vectorToReturn;
+        }
+
         public static Point GetContourCenterPoint(this VectorOfPoint contour)
         {
             var moment = CvInvoke.Moments(contour);
@@ -356,6 +374,19 @@ namespace ASAP_WPF
             foreach (var point in pixels.ToArray())
             {
                 CvInvoke.Circle(modifiedMat,point,0,new MCvScalar(127,127,127),-1);
+            }
+
+            return modifiedMat;
+        }
+
+        public static Mat DrawColorPixelsToMat(this Mat matToDrawOn, VectorOfPoint pixels, MCvScalar color)
+        {
+            //https://stackoverflow.com/questions/49799057/how-to-draw-a-point-in-an-image-using-given-co-ordinate-with-python-opencv
+            var modifiedMat = matToDrawOn.CreateNewHardCopyFromMat();
+            foreach (var point in pixels.ToArray())
+            {
+                CvInvoke.Circle(modifiedMat, point, 0, color, -1);
+                CvInvoke.Circle(modifiedMat, point, 3, color, 1);
             }
 
             return modifiedMat;
@@ -1218,6 +1249,12 @@ namespace ASAP_WPF
     public static PointF Add(this PointF basePointA, PointF basePointB)
     {
         var tempPointF = new PointF(basePointA.X + basePointB.X, basePointA.Y + basePointB.Y);
+        return tempPointF;
+    }
+
+    public static PointF Subtract(this PointF basePointA, PointF basePointB)
+    {
+        var tempPointF = new PointF(basePointA.X - basePointB.X, basePointA.Y - basePointB.Y);
         return tempPointF;
     }
 
