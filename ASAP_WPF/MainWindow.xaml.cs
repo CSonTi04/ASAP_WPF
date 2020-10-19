@@ -22,6 +22,7 @@ using Emgu.CV.UI;
 using System.Windows.Forms;
 using CsvHelper.Configuration.Attributes;
 using Emgu.CV;
+using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Brushes = System.Windows.Media.Brushes;
@@ -492,6 +493,29 @@ namespace ASAP_WPF
             CurrCellLengthCoordinates.Background = Brushes.IndianRed;
             //CurrCellLengthAngle.Text = "";
             //CurrCellLengthAngle.Background = Brushes.IndianRed;
+        }
+
+        private void CalibrateMicroMeter_OnClick(object sender, RoutedEventArgs e)
+        {
+
+            var filePath = "";
+
+            using (var openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.gif;*.tif;...";
+                openFileDialog.FilterIndex = 2;
+                openFileDialog.RestoreDirectory = true;
+
+                if (openFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    filePath = openFileDialog.FileName;
+                }
+            }
+
+
+            var tempMat = CvInvoke.Imread(filePath, ImreadModes.ReducedGrayscale8);
+            var calibrator = new MicroMeterCalibrator(tempMat);
+            SettingsWindow.PPM_Sl.Value = calibrator.CalibratedMicroMeterPerPixel;
         }
     }
 }
