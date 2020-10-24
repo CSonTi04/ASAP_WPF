@@ -15,6 +15,7 @@ using Point = System.Drawing.Point;
 using Size = System.Drawing.Size;
 using System.Linq.Dynamic.Core;
 using System.Windows.Documents;
+using System.Windows.Forms;
 
 namespace ASAP_WPF
 {
@@ -1040,7 +1041,10 @@ namespace ASAP_WPF
             var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
             var foundLastWhitePixelInFrontOfCellInGivenRow = false;
             //var foundLastBlackPixelOfCellInGivenRow = false;
-            var counterOfSlice = 0;
+            var blackCounterOfSlice = 0;
+            var whiteCounterOfSlice = 0;
+            var firstWhitBeforeIDx = int.MinValue;
+            var lasttWhitBeforeIDx = int.MinValue;
 
             var prevPixelVal = -1;
 
@@ -1086,16 +1090,18 @@ namespace ASAP_WPF
                     if (!foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
                     {
                         foundFirstWhitePixelInFrontOfCellInGivenRow = true;
+                        firstWhitBeforeIDx = colIdx;
                     }
 
                     if (foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
                     {
                         foundLastWhitePixelInFrontOfCellInGivenRow = true;
+                        lasttWhitBeforeIDx = colIdx;
                     }
 
                     if (foundLastWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
                     {
-                        counterOfSlice++;
+                        blackCounterOfSlice++;
                     }
 
                     if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
@@ -1107,11 +1113,203 @@ namespace ASAP_WPF
                     break;
                 }
             }
-            return counterOfSlice;
+            return blackCounterOfSlice;
+        }
+
+        public static int GetWholeAreaOfCellSlice(this Mat matToMeasure)
+        {
+            var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
+            var foundLastWhitePixelInFrontOfCellInGivenRow = false;
+            var foundFirstWhitePixelAfterCellInGivenRow = false;
+            var foundLastWhitePixelAfterOfCellInGivenRow = false;
+            //var foundLastBlackPixelOfCellInGivenRow = false;
+            var blackCounterOfSlice = 0;
+            var whiteCounterOfSlice = 0;
+
+            var firstWhitBeforeIDx = int.MinValue;
+            var lastWhitBeforeIDx = int.MinValue;
+            var firstWhitAfterIDx = int.MinValue;
+            var lastWhitAfterIDx = int.MinValue;
+
+            var prevPixelVal = -1;
+
+            if (matToMeasure.NumberOfChannels > 1)
+                throw new Exception("Given matrix does not contain a greyscale picture!");
+
+            var nonZeroPixelNum = CvInvoke.CountNonZero(matToMeasure);
+            if (nonZeroPixelNum == 0) throw new Exception("Given image in the matrix has no proper threshold applied! - Only black pixels in Matrix!");
+            var segmentationSet = new HashSet<byte>();
+            foreach (var rowElement in matToMeasure.GetData())
+            {
+                var tempValue = (byte)rowElement;
+                if (segmentationSet.Contains(tempValue)) continue;
+                segmentationSet.Add(tempValue);
+                if (segmentationSet.Count > 2)
+                {
+                    throw new Exception("Given image in the matrix has no proper threshold applied! - More than two values in segmented Matrix!");
+                }
+            }
+
+            if (!(segmentationSet.Remove(BLACK_PIXEL) && segmentationSet.Remove(WHITE_PIXEL)))
+            {
+                throw new Exception("Given image in the matrix has no proper threshold applied! - The two segmentation values were not equal to BLACK_PIXEL and WHITE_PIXEL values");
+            }
+
+            for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
+            {
+                var tempRow = matToMeasure.Row(rowIdx);
+                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
+                if (nonZeroPixelNumForRow == 0) continue;
+
+                for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
+                {
+                    //var tempObject = tempRow.GetData().GetValue(0, colIdx);
+                    var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
+                    if (colIdx > 0) prevPixelVal = (byte)tempRow.GetData().GetValue(0, colIdx - 1);
+
+                    if (!foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
+                    {
+                        continue;
+                    }
+
+                    if (!foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
+                    {
+                        foundFirstWhitePixelInFrontOfCellInGivenRow = true;
+                        firstWhitBeforeIDx = colIdx;
+                    }
+
+                    if (foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
+                    {
+                        foundLastWhitePixelInFrontOfCellInGivenRow = true;
+                        lastWhitBeforeIDx = colIdx -1;
+                    }
+
+                    if (foundLastWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
+                    {
+                        blackCounterOfSlice++;
+                    }
+
+                    //
+                    if (foundLastWhitePixelInFrontOfCellInGivenRow && !foundFirstWhitePixelAfterCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
+                    {
+                        foundFirstWhitePixelAfterCellInGivenRow = true;
+                        firstWhitAfterIDx = colIdx;
+                    }
+
+                    if (!foundFirstWhitePixelAfterCellInGivenRow || BLACK_PIXEL != tempValue ||
+                        WHITE_PIXEL != prevPixelVal) continue;
+                    foundLastWhitePixelAfterOfCellInGivenRow = true;
+                    lastWhitAfterIDx = colIdx - 1;
+                    whiteCounterOfSlice += lastWhitBeforeIDx - firstWhitBeforeIDx;
+                    whiteCounterOfSlice += lastWhitAfterIDx - firstWhitAfterIDx;
+                    foundFirstWhitePixelInFrontOfCellInGivenRow = false;
+                    foundLastWhitePixelInFrontOfCellInGivenRow = false;
+                    foundFirstWhitePixelAfterCellInGivenRow = false;
+                    foundLastWhitePixelAfterOfCellInGivenRow = false;
+                    //foundLastBlackPixelOfCellInGivenRow = false;
+                    prevPixelVal = -1;
+                    break;
+
+
+                    //ez még így nem jó
+                    //if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
+                    //if (foundLastWhitePixelInAfterOfCellInGivenRow) continue;
+                    //foundLastBlackPixelOfCellInGivenRow = true;
+
+                }
+            }
+            return blackCounterOfSlice + whiteCounterOfSlice;
+        }
+
+        public static (Mat, Mat) SliceMatInHalfVerticallyAlt(this Mat matToSlice)
+        {
+            //https://answers.opencv.org/question/82641/dividing-image-horizontally-into-equal-parts/
+            //leget ezt is range-gel kellene?
+            if (matToSlice.Cols < 2) throw new Exception("Given matrix has 1 or no rows!");
+            var leftHalfRectFirstPoint = new Point(0, 0);
+            var leftHalfRectSecondPoint = new Point(matToSlice.Cols / 2, matToSlice.Height);
+            var firstTempSize = new Size(leftHalfRectSecondPoint.X - leftHalfRectFirstPoint.X,
+                leftHalfRectSecondPoint.Y - leftHalfRectFirstPoint.Y);
+            var leftHalfRect = new Rectangle(leftHalfRectFirstPoint, firstTempSize);
+
+            var rightHalfRectFirstPoint = new Point(0, leftHalfRect.Width);
+            var rightHalfRectSecondPoint = new Point(matToSlice.Cols, matToSlice.Cols - leftHalfRect.Width);
+            var secondTempSize = new Size(rightHalfRectSecondPoint.X - rightHalfRectFirstPoint.X,
+                rightHalfRectSecondPoint.Y - rightHalfRectFirstPoint.Y);
+            var rightHalfRect = new Rectangle(rightHalfRectFirstPoint, secondTempSize);
+
+            var leftHalf = new Mat(matToSlice, leftHalfRect);
+            var rightHalf = new Mat(matToSlice, rightHalfRect);
+
+            //Talán kellene a RowRange, mert az o1
+
+            if (leftHalf.Height + leftHalf.Height != matToSlice.Height)
+                throw new Exception("Separated halves summed height does not equal the original matrix height!");
+
+            return (leftHalf, rightHalf);
+        }
+
+        //Majd a forgatáshoz
+        //https://stackoverflow.com/questions/38250597/rotate-roi-in-a-picture
+        //https://stackoverflow.com/questions/26279853/how-to-store-all-the-pixels-within-a-rotatedrect-to-another-matrix/26284491#26284491
+
+
+        public static Mat TrimMat(this Mat matToTrim)
+        {
+            var matToReturn = matToTrim.CreateNewMatLikeThis();
+
+            var nonZeroPixelNum = CvInvoke.CountNonZero(matToTrim);
+            if (nonZeroPixelNum == 0) throw new Exception("Given image in the matrix is empty!");
+
+
+            for (var rowIdx = 0; rowIdx < matToTrim.Rows; rowIdx++)
+            {
+                var tempRow = matToTrim.Row(rowIdx);
+                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
+                if (nonZeroPixelNumForRow == 0)
+                {
+                    matToReturn.PushBack(tempRow);
+                    continue;
+                }
+
+
+                var trimHeader = new Mat();
+                var alphaIdx = int.MinValue;
+                var omegaIdx = int.MaxValue;
+                var prevPixelVal = int.MinValue;
+                var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
+                var listOfWhitePixelIdxs = new List<int>();
+                for (var colIdx = 0; colIdx < matToTrim.Cols; colIdx++)
+                {
+                    var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
+                    if (colIdx > 0) prevPixelVal = (byte)tempRow.GetData().GetValue(0, colIdx - 1);
+
+                    if (!foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
+                    {
+                        continue;
+                    }
+
+                    if (!foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
+                    {
+                        foundFirstWhitePixelInFrontOfCellInGivenRow = true;
+                    }
+
+                    if(foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue)
+                    {
+                        listOfWhitePixelIdxs.Add(colIdx);
+                    }
+
+
+                }
+            }
+
+            return matToReturn;
         }
 
 
-    //https://stackoverflow.com/questions/4122527/sliding-window-minimum-algorithm
+
+
+        //https://stackoverflow.com/questions/4122527/sliding-window-minimum-algorithm
         //Az nem derült ki, hogy mekkora legyen a sliding window mérete, de lehet azt paraméterezni kellene, és kezdjük öttel
 
         public static Mat GetBiggestAreaOfCellWithSlidingWindow(this Mat matToMeasure, int slidingWindowSize)
@@ -1149,6 +1347,7 @@ namespace ASAP_WPF
                 var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
                 if (nonZeroPixelNum == 0) continue;
                 var slidingWindowArea = slidingWindowMat.GetAreaOfCellSlice();
+                var slidingWindowAreaAlt = slidingWindowMat.GetWholeAreaOfCellSlice();
                 if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
                 biggestAreSoFar = slidingWindowArea;
                 returnMat = slidingWindowMat;
