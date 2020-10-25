@@ -1120,16 +1120,9 @@ namespace ASAP_WPF
         {
             var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
             var foundLastWhitePixelInFrontOfCellInGivenRow = false;
-            var foundFirstWhitePixelAfterCellInGivenRow = false;
-            var foundLastWhitePixelAfterOfCellInGivenRow = false;
             //var foundLastBlackPixelOfCellInGivenRow = false;
-            var blackCounterOfSlice = 0;
+            var wholeAreaCounterOfSlice = 0;
             var whiteCounterOfSlice = 0;
-
-            var firstWhitBeforeIDx = int.MinValue;
-            var lastWhitBeforeIDx = int.MinValue;
-            var firstWhitAfterIDx = int.MinValue;
-            var lastWhitAfterIDx = int.MinValue;
 
             var prevPixelVal = -1;
 
@@ -1158,8 +1151,10 @@ namespace ASAP_WPF
             for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
             {
                 var tempRow = matToMeasure.Row(rowIdx);
-                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
-                if (nonZeroPixelNumForRow == 0) continue;
+                var currentRowWhitePixelCounter = CvInvoke.CountNonZero(tempRow);
+                if (currentRowWhitePixelCounter == 0) continue;
+
+                var currentRowBlackCounter = 0;
 
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
@@ -1175,50 +1170,32 @@ namespace ASAP_WPF
                     if (!foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
                     {
                         foundFirstWhitePixelInFrontOfCellInGivenRow = true;
-                        firstWhitBeforeIDx = colIdx;
                     }
 
                     if (foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
                     {
                         foundLastWhitePixelInFrontOfCellInGivenRow = true;
-                        lastWhitBeforeIDx = colIdx -1;
                     }
 
                     if (foundLastWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
                     {
-                        blackCounterOfSlice++;
+                        //blackCounterOfSlice++;
+                        currentRowBlackCounter++;
                     }
 
-                    //
-                    if (foundLastWhitePixelInFrontOfCellInGivenRow && !foundFirstWhitePixelAfterCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
+                    if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
+                    wholeAreaCounterOfSlice += currentRowBlackCounter;
+                    if (currentRowWhitePixelCounter < currentRowBlackCounter)
                     {
-                        foundFirstWhitePixelAfterCellInGivenRow = true;
-                        firstWhitAfterIDx = colIdx;
+                        wholeAreaCounterOfSlice += currentRowWhitePixelCounter;
                     }
-
-                    if (!foundFirstWhitePixelAfterCellInGivenRow || BLACK_PIXEL != tempValue ||
-                        WHITE_PIXEL != prevPixelVal) continue;
-                    foundLastWhitePixelAfterOfCellInGivenRow = true;
-                    lastWhitAfterIDx = colIdx - 1;
-                    whiteCounterOfSlice += lastWhitBeforeIDx - firstWhitBeforeIDx;
-                    whiteCounterOfSlice += lastWhitAfterIDx - firstWhitAfterIDx;
                     foundFirstWhitePixelInFrontOfCellInGivenRow = false;
                     foundLastWhitePixelInFrontOfCellInGivenRow = false;
-                    foundFirstWhitePixelAfterCellInGivenRow = false;
-                    foundLastWhitePixelAfterOfCellInGivenRow = false;
-                    //foundLastBlackPixelOfCellInGivenRow = false;
                     prevPixelVal = -1;
                     break;
-
-
-                    //ez még így nem jó
-                    //if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
-                    //if (foundLastWhitePixelInAfterOfCellInGivenRow) continue;
-                    //foundLastBlackPixelOfCellInGivenRow = true;
-
                 }
             }
-            return blackCounterOfSlice + whiteCounterOfSlice;
+            return wholeAreaCounterOfSlice;
         }
 
         public static (Mat, Mat) SliceMatInHalfVerticallyAlt(this Mat matToSlice)
