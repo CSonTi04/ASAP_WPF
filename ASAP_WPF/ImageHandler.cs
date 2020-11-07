@@ -26,6 +26,7 @@ namespace ASAP_WPF
         public VectorOfVectorOfPoint Boxes { get; set; }
 
         public int DetectedCellCount { get; set; }
+        public Mat OgImage { get; set; }
         public Mat Image { get; set; }
         public Mat ProcessedImage { get; set; }
         public Mat ContourImage { get; set; }
@@ -145,12 +146,14 @@ namespace ASAP_WPF
             ContourImage = null;
             Contours.Clear();
             ImgProcessor.Process();
+            OgImage = ImgProcessor.OgImageMat;
             ProcessedImage = ImgProcessor.ImageMat;
             ContourImage = ImgProcessor.ContourImageMat;
             Contours.Push(ImgProcessor.ContoursToReturn);
             Boxes.Push(ImgProcessor.AngledBoundingBoxesToReturn);
             DetectedCellCount = Contours.Size;
             //BoxedImage = DrawAllCellContourBoundingBoxes();
+            MainWindow.ImageProcessorExaminer.AddImage(OgImage.CreateNewHardCopyFromMat(), "ImageHandler_OgImage");
             MainWindow.ImageProcessorExaminer.AddImage(Image.CreateNewHardCopyFromMat(), "ImageHandler_Image");
             MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage.CreateNewHardCopyFromMat(), "ImageHandler_ProcessedImage");
             MainWindow.ImageProcessorExaminer.AddImage(ContourImage.CreateNewHardCopyFromMat(), "ImageHandler_ContourImage");
@@ -395,8 +398,8 @@ namespace ASAP_WPF
                 }
             }
 
-            if (tempVectorList.Count > 1) throw new Exception("Point is inside of more than one contour!");
-            if (tempVectorList.Count == 0) throw new Exception("Point is not inside registered contours!");
+            //if (tempVectorList.Count > 1) throw new Exception("Point is inside of more than one contour!");
+            //if (tempVectorList.Count == 0) throw new Exception("Point is not inside registered contours!");
             return tempVectorOfPoint;
         }
 
@@ -690,6 +693,7 @@ namespace ASAP_WPF
 
         public double CalculateCellLength(VectorOfPoint contour)
         {
+            if (null == contour) return Double.NaN;
 
             //TODO hierarchia kihasználása, hogy a nagyobb kontúr meg legyen, ne a doboz növelésével
             var roiRectangle = CvInvoke.BoundingRectangle(contour);
@@ -708,12 +712,16 @@ namespace ASAP_WPF
             //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
             var roiMat = new Mat(this.ProcessedImage, roiRectangle);
             var newRoiMat = new Mat(this.ProcessedImage,newRoiRectangle);
+            var roiMatOgPic = new Mat(this.OgImage, roiRectangle);
+            var newRoiMatOgPic = new Mat(this.OgImage, newRoiRectangle);
             if (roiMat.NumberOfChannels > 1)
             {
                 CvInvoke.CvtColor(roiMat, roiMat, ColorConversion.Bgra2Gray);
             }
             MainWindow.ImageProcessorExaminer.AddImage(roiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_roiMat");
             MainWindow.ImageProcessorExaminer.AddImage(newRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_newRoiMat");
+            MainWindow.ImageProcessorExaminer.AddImage(roiMatOgPic.CreateNewHardCopyFromMat(), "CalculateCellLength_roiMatOgPic");
+            MainWindow.ImageProcessorExaminer.AddImage(newRoiMatOgPic.CreateNewHardCopyFromMat(), "CalculateCellLength_newRoiMatOgPic");
             var pixelNum = CvInvoke.CountNonZero(roiMat);
             if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
             //var tempRect = CvInvoke.MinAreaRect(contour);
@@ -721,20 +729,50 @@ namespace ASAP_WPF
             //var rotatedRoiMatAlt = newRoiMat.RotateMat(contour, 90.0);
 
             var rotatedRoiMat = newRoiMat.RotMat(contour);
-            var rotatedRoiMatAlt = newRoiMat.RotMat(contour, 90.0);
+            var rotatedRoiMatOgPic = newRoiMatOgPic.RotMatGreyscale(contour,0.0);
+            var newGrayScaleContour = rotatedRoiMatOgPic.DetectOnlyCellInMat();
+            rotatedRoiMatOgPic.GetContourIntensitySet(newGrayScaleContour);
+
+            //var rotatedRoiMatAlt = newRoiMat.RotMat(contour, 90.0);
 
             MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMat.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMat");
-            MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMatAlt.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMatAlt");
+            MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMatOgPic.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMatOgPic");
+            //MainWindow.ImageProcessorExaminer.AddImage(rotatedRoiMatAlt.CreateNewHardCopyFromMat(), "CalculateCellLength_rotatedRoiMatAlt");
             //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
             //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
             var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPx();
-            var sizeEndPoint = rotatedRoiMat.GetPointsOfWidestSliceOfCell();
+            var sizeEndPoint = rotatedRoiMat.GetPointsOfWidestSliceOfCellSegmented();
+
+            var newContours = rotatedRoiMat.DetectCellContoursInMat();
+
+
+            var sizeInPxWithContours = rotatedRoiMat.GetWidestSliceOfCellLengthInPxWithContours(newContours[1],newContours[0]);
+            var sizeEndPointWithContours = rotatedRoiMat.GetPointsOfWidestSliceOfCellSegmentedWithContours(newContours[1], newContours[0]);
+
+
+            var newContour = rotatedRoiMat.DetectOnlyCellInMat();
+
+
+            //TEST
+            //GetBiggestAreaOfCellWithSlidingWindowAndContourSegmented
+            //var test = new Mat(5, 5, rotatedRoiMat.Depth, rotatedRoiMat.NumberOfChannels);
+            //test.SetValue(0, 0, (byte)1);
+            //test.SetValue(1, 0, (byte)1);
+            //test.SetValue(2, 0, (byte)1);
+            //test.SetValue(3, 0, (byte)1);
+            //test.SetValue(4, 0, (byte)1);
+            //test.GetBiggestAreaOfCellWithSlidingWindowAndContourSegmented(1, newContour);
+
+            var sizeInPxWithContour = rotatedRoiMat.GetWidestSliceOfCellLengthInPxWithContour(newContour);
+            var sizeEndPointWithContour = rotatedRoiMat.GetPointsOfWidestSliceOfCellSegmentedWithContour(newContour);
+            //var sizeInPxOgPic = rotatedRoiMatOgPic.GetWidestSliceOfCellLengthInPx();
+            //var sizeEndPointOgPic = rotatedRoiMatOgPic.GetPointsOfWidestSliceOfCell();
             var angledBoundingRectangle = CvInvoke.MinAreaRect(contour);
 
             //The order is bottomLeft, topLeft, topRight, bottomRight.
             //Remélhetőleg ez tényleg így van
 
-            var newContour = rotatedRoiMat.DetectOnlyCellInMat();
+
 
 
             // ez mindig a legalsó pontot fogja elöszőpr visszaadni aztán onnan kezd majd el az óramutat járásáával ellentétesen végig menni rajtuk

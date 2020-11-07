@@ -23,6 +23,7 @@ namespace ASAP_WPF
     {
         private static byte WHITE_PIXEL = 255;
         private static byte BLACK_PIXEL = 0;
+        private static double WHITE_TO_BLACK_RATIO = 0.65;
 
         public static Mat CreateNewHardCopyFromMat(this Mat matToHardCopy)
         {
@@ -107,24 +108,66 @@ namespace ASAP_WPF
 
         public static VectorOfPoint DetectOnlyCellInMat(this Mat matToSample)
         {
+            //valami félrement bassza meg
             var contours = new VectorOfVectorOfPoint();
             var contoursToReturn = new VectorOfVectorOfPoint();
             var hierarchy = new Mat();
             CvInvoke.FindContours(matToSample, contours, hierarchy, Emgu.CV.CvEnum.RetrType.Tree, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
+            double maxArea = -1;
+            var maxAreaContour = new VectorOfPoint();
 
             for (var idx = 0; idx < contours.Size; idx++)
             {
                 var con = contours[idx];
-                if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
-                {
-                    continue;
-                }
-                contoursToReturn.Push(con);
-            }
 
-            if(contoursToReturn.Size > 1) throw new Exception("More than one complete contour in ROI!");
+                //if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
+                //{
+                //    continue;
+                //}
+                //contoursToReturn.Push(con);
+                var tempArea = CvInvoke.ContourArea(con);
+                if (!(tempArea > maxArea)) continue;
+                maxArea = tempArea;
+                maxAreaContour = con;
+            }
+            contoursToReturn.Push(maxAreaContour);
+
+            if (contoursToReturn.Size > 1) throw new Exception("More than one complete contour in ROI!");
 
             return contoursToReturn[0];
+        }
+
+        public static List<VectorOfPoint> DetectCellContoursInMat(this Mat matToSample)
+        {
+            //valami félrement bassza meg
+            var contours = new VectorOfVectorOfPoint();
+            var contoursToReturn = new List<VectorOfPoint>();
+            var hierarchy = new Mat();
+            CvInvoke.FindContours(matToSample, contours, hierarchy, Emgu.CV.CvEnum.RetrType.Tree, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
+
+
+            for (var idx = 0; idx < contours.Size; idx++)
+            {
+                var con = contours[idx];
+
+                //if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
+                //{
+                //    continue;
+                //}
+                //contoursToReturn.Push(con);
+                //var tempArea = CvInvoke.ContourArea(con);
+                //if (!(tempArea > maxArea)) continue;
+                //maxArea = tempArea;
+                //maxAreaContour = con;
+                contoursToReturn.Add(con);
+            }
+
+
+            if (contoursToReturn.Count > 2) throw new Exception("More than one complete contour in ROI!");
+
+            contoursToReturn.OrderByDescending(x => CvInvoke.ContourArea(x));
+
+            return contoursToReturn;
         }
 
         public static Mat RotMatOnly(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
@@ -262,6 +305,79 @@ namespace ASAP_WPF
             return tresholdedMat;
         }
 
+        public static Mat RotMatGreyscale(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
+        {
+            var matToReturn = new Mat();
+
+            var angledBoundingRectangle = CvInvoke.MinAreaRect(contour);
+            var ogRoiHeight = uprightBondingRectangleMat.Height;
+            var ogRoiWidth = uprightBondingRectangleMat.Width;
+
+            var newRoiSideLength = ogRoiWidth > ogRoiHeight ? ogRoiWidth * Math.Sqrt(2) : ogRoiHeight * Math.Sqrt(2);
+
+            var ogBBoxHeight = angledBoundingRectangle.Size.Height;
+            var ogBBoxWidth = angledBoundingRectangle.Size.Width;
+
+            var oldRoi = uprightBondingRectangleMat;
+
+            var vm = new VectorOfMat();
+            vm.Push(uprightBondingRectangleMat);
+
+            var histogram = new Mat();
+            CvInvoke.CalcHist(vm, new int[]{0}, new Mat(),histogram, new int[]{ 255}, new float[] {0f,256f},false);
+            var tempRow = histogram.Col(0);
+            var mostCommonIntensityCount = -1;
+            var mostCommonIntensity = -1;
+
+            for (var rowIdx = 0; rowIdx < tempRow.Rows; rowIdx++)
+            {
+                var tempValue = tempRow.GetData().GetValue(rowIdx, 0);
+                var convertedTempValue = (int) (float) tempValue;
+                if (convertedTempValue <= mostCommonIntensityCount) continue;
+                mostCommonIntensityCount = convertedTempValue;
+                mostCommonIntensity = rowIdx;
+            }
+            //var newRoi = Mat.Zeros((int)newRoiSideLength, (int)newRoiSideLength, uprightBondingRectangleMat.Depth, 1);
+            var newRoi = new Mat( (int)newRoiSideLength, (int)newRoiSideLength, uprightBondingRectangleMat.Depth,1);
+            newRoi.SetTo(new MCvScalar(mostCommonIntensity));
+
+            var newRoiCenter = new PointF((float)(newRoiSideLength / 2.0 - 0.5),
+                (float)(newRoiSideLength / 2.0f - 0.5f));
+
+            var rowOffset = newRoi.Rows / 2 - oldRoi.Rows / 2;
+            var colOffset = newRoi.Cols / 2 - oldRoi.Cols / 2;
+
+            var rowRange = new Range(rowOffset, rowOffset + oldRoi.Rows);
+            var colRange = new Range(colOffset, colOffset + oldRoi.Cols);
+
+            var newRoiViewPort = new Mat(newRoi, rowRange, colRange);
+
+            oldRoi.CopyTo(newRoiViewPort);
+
+            MainWindow.ImageProcessorExaminer.AddImage(oldRoi.CreateNewHardCopyFromMat(), "RotMatGreyscale_oldRoi");
+            MainWindow.ImageProcessorExaminer.AddImage(newRoi.CreateNewHardCopyFromMat(), "RotMatGreyscale_newRoi");
+
+            var desiredAngleOfRotation = angledBoundingRectangle.Angle + angleOffset;
+            if (ogBBoxWidth < ogBBoxHeight)
+            {
+                desiredAngleOfRotation = angledBoundingRectangle.Angle - 90.0;
+
+            }
+
+            var rotatingMat = new Mat();
+            CvInvoke.GetRotationMatrix2D(newRoiCenter, desiredAngleOfRotation, 1.0, rotatingMat);
+
+            CvInvoke.WarpAffine(newRoi, matToReturn, rotatingMat, newRoi.Size);
+            //var thresholdedMat = new Mat();
+            //CvInvoke.AdaptiveThreshold(matToReturn, tresholdedMat, 255, Emgu.CV.CvEnum.AdaptiveThresholdType.MeanC, Emgu.CV.CvEnum.ThresholdType.Binary, 59, tempAdaptiveThreshold);
+            //CvInvoke.Threshold(matToReturn, thresholdedMat, 127, 255, Emgu.CV.CvEnum.ThresholdType.Binary);
+            //TODO kideríteni, hogy ide milyen thresholding kellene
+            MainWindow.ImageProcessorExaminer.AddImage(matToReturn.CreateNewHardCopyFromMat(), "RotMat_RotatedRoi");
+            //MainWindow.ImageProcessorExaminer.AddImage(thresholdedMat.CreateNewHardCopyFromMat(),"RotMat_ThresholdedRotatedRoi");
+
+            return matToReturn;
+        }
+
         /*public static Mat RotMat(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
          {
             var matToReturn = new Mat();
@@ -379,6 +495,18 @@ namespace ASAP_WPF
                 CvInvoke.Circle(modifiedMat, point, 3, color, 1);
             }
 
+            return modifiedMat;
+        }
+
+        public static Mat DrawMarkerPixelsToMat(this Mat matToDrawOn, VectorOfPoint pixels, MCvScalar color)
+        {
+            //https://stackoverflow.com/questions/49799057/how-to-draw-a-point-in-an-image-using-given-co-ordinate-with-python-opencv
+            var modifiedMat = matToDrawOn.CreateNewHardCopyFromMat();
+            //var color = new MCvScalar(127, 127, 127);
+            foreach (var point in pixels.ToArray())
+            {
+                CvInvoke.Circle(modifiedMat, point, 0, color, -1);
+            }
             return modifiedMat;
         }
 
@@ -744,7 +872,7 @@ namespace ASAP_WPF
             return matToReturn;
         }
 
-        public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat matToMeasure)
+        public static (Point, Point) GetPointsOfWidestSliceOfCellSegmented(this Mat matToMeasure)
         {
             //Kell majd hozzá a bounding box
             //https://stackoverflow.com/questions/15043152/rotate-opencv-matrix-by-90-180-270-degrees
@@ -783,8 +911,8 @@ namespace ASAP_WPF
 
             var newContour = matToMeasure.DetectOnlyCellInMat();
             var tempBBox = CvInvoke.MinAreaRect(newContour);
-            var boxpoints = tempBBox.GetVertices();
-            points.Push(boxpoints.ConvertToPointArray());
+            var boxPoints = tempBBox.GetVertices();
+            points.Push(boxPoints.ConvertToPointArray());
             //var VONewContour = new VectorOfVectorOfPoint();
             //VONewContour.Push(newContour);
 
@@ -795,6 +923,116 @@ namespace ASAP_WPF
 
             MainWindow.ImageProcessorExaminer.AddImage(markedMat.CreateNewHardCopyFromMat(),
                 "GetPointsOfWidestSliceOfCell_PointsMarked");
+
+            return (tempPointA, tempPointB);
+        }
+
+        public static (Point, Point) GetPointsOfWidestSliceOfCellSegmentedWithContours(this Mat matToMeasure, VectorOfPoint innerContour, VectorOfPoint outerContour)
+        {
+            //Kell majd hozzá a bounding box
+            //https://stackoverflow.com/questions/15043152/rotate-opencv-matrix-by-90-180-270-degrees
+            //https://jayrambhia.wordpress.com/2012/09/20/roi-bounding-box-selection-of-mat-images-in-opencv/
+            //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
+            //var roiMat = matToMeasure.CreateNewHardCopyFromMat();
+            //var tempA = new Point(0);
+            //var tempB = new Point(0);
+            //var tempSize = new Size(cornerB.X - cornerA.X, cornerB.Y - cornerA.Y);
+            //var roiRectangle = new Rectangle(cornerA, tempSize);
+            //var roiMat = new Mat(matToMeasure, roiRectangle);
+            //MVCRect tempRect = new MVSRect();
+
+            //roiMat = roiMat(roiRectangle);
+            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(matToMeasure, 5, innerContour, outerContour);
+            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(biggestAreaWindowAndIdx.Item1, 1, innerContour, innerContour);
+            var pointPair = biggestAreaRowAndId.Item1.GetCenterIdxOfDiffractionLineSlice();
+
+            var rowIdx = biggestAreaWindowAndIdx.Item2 + biggestAreaRowAndId.Item2;
+
+            var tempPointA = new Point(pointPair.Item1, rowIdx);
+            var tempPointB = new Point(pointPair.Item2, rowIdx);
+
+            var points = new VectorOfPoint();
+            points.Push(new[] { tempPointA, tempPointB });
+
+            var pointsVoVo = new VectorOfVectorOfPoint();
+            var temp = new VectorOfPoint();
+            temp.Push(new[] { tempPointA });
+            pointsVoVo.Push(temp);
+            temp = new VectorOfPoint();
+            temp.Push(new[] { tempPointB });
+            pointsVoVo.Push(temp);
+
+            // CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
+
+            var newContour = matToMeasure.DetectOnlyCellInMat();
+            var tempBBox = CvInvoke.MinAreaRect(newContour);
+            var boxPoints = tempBBox.GetVertices();
+            points.Push(boxPoints.ConvertToPointArray());
+            //var VONewContour = new VectorOfVectorOfPoint();
+            //VONewContour.Push(newContour);
+
+            var markedMat = matToMeasure.CreateNewHardCopyFromMat();
+            //CvInvoke.DrawContours(markedMat, VONewContour, 0, new MCvScalar(127, 127, 127), 2);
+
+            markedMat = DrawPixelsToMat(matToMeasure, points);
+
+            MainWindow.ImageProcessorExaminer.AddImage(markedMat.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCellSegmentedWithContours_PointsMarked");
+
+            return (tempPointA, tempPointB);
+        }
+
+        public static (Point, Point) GetPointsOfWidestSliceOfCellSegmentedWithContour(this Mat matToMeasure, VectorOfPoint contour)
+        {
+            //Kell majd hozzá a bounding box
+            //https://stackoverflow.com/questions/15043152/rotate-opencv-matrix-by-90-180-270-degrees
+            //https://jayrambhia.wordpress.com/2012/09/20/roi-bounding-box-selection-of-mat-images-in-opencv/
+            //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
+            //var roiMat = matToMeasure.CreateNewHardCopyFromMat();
+            //var tempA = new Point(0);
+            //var tempB = new Point(0);
+            //var tempSize = new Size(cornerB.X - cornerA.X, cornerB.Y - cornerA.Y);
+            //var roiRectangle = new Rectangle(cornerA, tempSize);
+            //var roiMat = new Mat(matToMeasure, roiRectangle);
+            //MVCRect tempRect = new MVSRect();
+
+            //roiMat = roiMat(roiRectangle);
+            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(matToMeasure, 5, contour);
+            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(biggestAreaWindowAndIdx.Item1, 1, contour);
+            var pointPair = biggestAreaRowAndId.Item1.GetCenterIdxOfDiffractionLineSlice();
+
+            var rowIdx = biggestAreaWindowAndIdx.Item2 + biggestAreaRowAndId.Item2;
+
+            var tempPointA = new Point(pointPair.Item1, rowIdx);
+            var tempPointB = new Point(pointPair.Item2, rowIdx);
+
+            var points = new VectorOfPoint();
+            points.Push(new[] { tempPointA, tempPointB });
+
+            var pointsVoVo = new VectorOfVectorOfPoint();
+            var temp = new VectorOfPoint();
+            temp.Push(new[] { tempPointA });
+            pointsVoVo.Push(temp);
+            temp = new VectorOfPoint();
+            temp.Push(new[] { tempPointB });
+            pointsVoVo.Push(temp);
+
+            // CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
+
+            var newContour = matToMeasure.DetectOnlyCellInMat();
+            var tempBBox = CvInvoke.MinAreaRect(newContour);
+            var boxPoints = tempBBox.GetVertices();
+            points.Push(boxPoints.ConvertToPointArray());
+            //var VONewContour = new VectorOfVectorOfPoint();
+            //VONewContour.Push(newContour);
+
+            var markedMat = matToMeasure.CreateNewHardCopyFromMat();
+            //CvInvoke.DrawContours(markedMat, VONewContour, 0, new MCvScalar(127, 127, 127), 2);
+
+            markedMat = DrawPixelsToMat(matToMeasure, points);
+
+            MainWindow.ImageProcessorExaminer.AddImage(markedMat.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCellSegmentedWithContour_PointsMarked");
 
             return (tempPointA, tempPointB);
         }
@@ -885,31 +1123,16 @@ namespace ASAP_WPF
             return length;
         }
 
-        //public static (Point, Point) GetPointsOfWidestSliceOfCell(this Mat uprightBondingRectangleMat)
         public static int GetWidestSliceOfCellLengthInPx(this Mat uprightBondingRectangleMat)
         {
-            //var tempA = new Point(0);
-            //var tempB = new Point(0);
-
-            /*var counter = 0;
-
-            for(var colIdx = 0; colIdx < uprightBondingRectangleMat.Cols; colIdx++)
-            {
-                for (var rowIdx = 0; rowIdx < uprightBondingRectangleMat.Cols; rowIdx++)
-                {
-                    var tempValue = (byte)uprightBondingRectangleMat.GetData().GetValue(colIdx, rowIdx);
-                    if (0 == tempValue) counter++;
-                }
-            }
-            if(counter == uprightBondingRectangleMat.Rows * uprightBondingRectangleMat.Cols) throw new Exception("All pixels of roi are the same color, something is wrong!");*/
 
             var pixelNum = CvInvoke.CountNonZero(uprightBondingRectangleMat);
             if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
 
-            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindow(uprightBondingRectangleMat, 5);
+            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindowSegmented(uprightBondingRectangleMat, 5);
             MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(),
                 "GetPointsOfWidestSliceOfCell_biggestAreaWindow");
-            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindow(biggestAreaWindow, 1);
+            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindowSegmented(biggestAreaWindow, 1);
             MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(),
                 "GetPointsOfWidestSliceOfCell_biggestAreaRow");
             var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
@@ -917,14 +1140,84 @@ namespace ASAP_WPF
             return secondOffset - firstOffset;
         }
 
-        /*public static Mat GetWidestSliceOfCell(this Mat matToMeasure)
+        public static int GetWidestSliceOfCellLengthInPxWithContour(this Mat uprightBondingRectangleMat, VectorOfPoint contour)
         {
-            var returnMat = new Mat();
+
+            var pixelNum = CvInvoke.CountNonZero(uprightBondingRectangleMat);
+            if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
+
+            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindowAndContourSegmented(uprightBondingRectangleMat, 5, contour);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(),
+                "GetWidestSliceOfCellLengthInPxWithContour_biggestAreaWindow");
+            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindowAndContourSegmented(biggestAreaWindow, 1, contour);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(),
+                "GetWidestSliceOfCellLengthInPxWithContour_biggestAreaRow");
+            var firstOffsetToReturn = 0;
+            var secondOffsetToReturn = 0;
+
+            try
+            {
+                var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
+                firstOffsetToReturn = firstOffset;
+                secondOffsetToReturn = secondOffset;
+
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
 
 
+            return secondOffsetToReturn - firstOffsetToReturn;
+        }
 
-            return returnMat;
-        }*/
+        public static int GetWidestSliceOfCellLengthInPxWithContours(this Mat uprightBondingRectangleMat, VectorOfPoint innerContour, VectorOfPoint outerContour)
+        {
+
+            var pixelNum = CvInvoke.CountNonZero(uprightBondingRectangleMat);
+            if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
+
+            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindowAndContoursSegmented(uprightBondingRectangleMat, 5, innerContour, outerContour);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(),
+                "GetWidestSliceOfCellLengthInPxWithContours_biggestAreaWindow");
+            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindowAndContoursSegmented(biggestAreaWindow, 1, innerContour, outerContour);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(),
+                "GetWidestSliceOfCellLengthInPxWithContours_biggestAreaRow");
+            var firstOffsetToReturn = 0;
+            var secondOffsetToReturn = 0;
+
+            try
+            {
+                var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
+                firstOffsetToReturn = firstOffset;
+                secondOffsetToReturn = secondOffset;
+
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
+
+
+            return secondOffsetToReturn - firstOffsetToReturn;
+        }
+
+        public static int GetWidestSliceOfCellLengthWithContourInPx(this Mat uprightBondingRectangleMat, VectorOfPointF contour)
+        {
+
+            var pixelNum = CvInvoke.CountNonZero(uprightBondingRectangleMat);
+            if (pixelNum < 1) throw new Exception("Selected ROI is blank!");
+
+            var biggestAreaWindow = GetBiggestAreaOfCellWithSlidingWindowSegmented(uprightBondingRectangleMat, 5);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaWindow.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCell_biggestAreaWindow");
+            var biggestAreaRow = GetBiggestAreaOfCellWithSlidingWindowSegmented(biggestAreaWindow, 1);
+            MainWindow.ImageProcessorExaminer.AddImage(biggestAreaRow.CreateNewHardCopyFromMat(),
+                "GetPointsOfWidestSliceOfCell_biggestAreaRow");
+            var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
+
+            return secondOffset - firstOffset;
+        }
 
         public static (int, int) GetCenterIdxOfDiffractionLineSlice(this Mat matToMeasure)
         {
@@ -1036,6 +1329,97 @@ namespace ASAP_WPF
         //Majd a forgatáshoz
         //https://stackoverflow.com/questions/38250597/rotate-roi-in-a-picture
         //https://stackoverflow.com/questions/26279853/how-to-store-all-the-pixels-within-a-rotatedrect-to-another-matrix/26284491#26284491
+
+
+        public static int GetAreaOfSegmentedCellSliceWithContourSegmented(this Mat matToMeasure, int startRowIdxOffset, VectorOfPoint contour)
+        {
+            var whiteArea = 0;
+            var blackArea = 0;
+            var listOfPointsMarkedAsWhite = new List<PointF>();
+            for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
+            {
+                var tempRow = matToMeasure.Row(rowIdx);
+                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
+                if (nonZeroPixelNumForRow == 0) continue;
+
+                var whitePixelCountForRow = 0;
+
+                for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
+                {
+                    var tempPointF = new PointF(startRowIdxOffset + rowIdx,colIdx);
+                    var tempContourDistance = CvInvoke.PointPolygonTest(contour, tempPointF, false);
+                    var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
+
+                    if (tempContourDistance > 0 && BLACK_PIXEL == tempValue)
+                    {
+                        blackArea++;
+                    }
+
+                    if (!(tempContourDistance < 0) || WHITE_PIXEL != tempValue) continue;
+                    whitePixelCountForRow++;
+                    listOfPointsMarkedAsWhite.Add(tempPointF);
+                }
+                whiteArea += whitePixelCountForRow;
+
+            }
+
+            var pointsMarkedAsWhite = new VectorOfPointF();
+            pointsMarkedAsWhite.Push(listOfPointsMarkedAsWhite.ToArray());
+            var feedbackMat = matToMeasure.CreateNewHardCopyFromMat();
+            CvInvoke.CvtColor(feedbackMat, feedbackMat,ColorConversion.Gray2Bgr);
+            feedbackMat.DrawMarkerPixelsToMat(pointsMarkedAsWhite.ConvertToVectorOfPoint(), new MCvScalar(0,0,255));
+            MainWindow.ImageProcessorExaminer.AddImage(feedbackMat.CreateNewHardCopyFromMat(), "GetAreaOfSegmentedCellSliceWithContourSegmented_feedbackMat");
+
+            var areaToReturn = -1;
+            var currentWhiteToBLackRatio = -1.0;
+            if (blackArea > 0)
+            {
+                currentWhiteToBLackRatio = (double)whiteArea / (double)blackArea;
+            }
+
+            if (currentWhiteToBLackRatio > 0 && WHITE_TO_BLACK_RATIO > currentWhiteToBLackRatio)
+            {
+                areaToReturn = blackArea + whiteArea;
+            }
+            else
+            {
+                areaToReturn = blackArea;
+            }
+
+            return areaToReturn;
+        }
+
+        public static int GetAreaOfCellSliceWithContours(this Mat matToMeasure, int startRowIdxOffset, VectorOfPoint innerContour, VectorOfPoint outerContour)
+        {
+            var innerArea = 0;
+            var outerRimArea = 0;
+            for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
+            {
+                var tempRow = matToMeasure.Row(rowIdx);
+                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
+                if (nonZeroPixelNumForRow == 0) continue;
+
+                for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
+                {
+                    var tempPointF = new PointF(startRowIdxOffset + rowIdx, colIdx);
+                    var tempInnerContourDistance = CvInvoke.PointPolygonTest(innerContour, tempPointF, false);
+                    var tempOuterContourDistance = CvInvoke.PointPolygonTest(outerContour, tempPointF, false);
+                    if (tempInnerContourDistance > 0)
+                    {
+                        innerArea++;
+                    }
+
+                    if (tempOuterContourDistance > 0 && tempInnerContourDistance < 0)
+                    {
+                        outerRimArea++;
+                    }
+                }
+            }
+
+
+            return innerArea + outerRimArea;
+        }
+
         public static int GetAreaOfCellSlice(this Mat matToMeasure)
         {
             var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
@@ -1120,16 +1504,9 @@ namespace ASAP_WPF
         {
             var foundFirstWhitePixelInFrontOfCellInGivenRow = false;
             var foundLastWhitePixelInFrontOfCellInGivenRow = false;
-            var foundFirstWhitePixelAfterCellInGivenRow = false;
-            var foundLastWhitePixelAfterOfCellInGivenRow = false;
             //var foundLastBlackPixelOfCellInGivenRow = false;
             var blackCounterOfSlice = 0;
             var whiteCounterOfSlice = 0;
-
-            var firstWhitBeforeIDx = int.MinValue;
-            var lastWhitBeforeIDx = int.MinValue;
-            var firstWhitAfterIDx = int.MinValue;
-            var lastWhitAfterIDx = int.MinValue;
 
             var prevPixelVal = -1;
 
@@ -1158,8 +1535,10 @@ namespace ASAP_WPF
             for (var rowIdx = 0; rowIdx < matToMeasure.Rows; rowIdx++)
             {
                 var tempRow = matToMeasure.Row(rowIdx);
-                var nonZeroPixelNumForRow = CvInvoke.CountNonZero(tempRow);
-                if (nonZeroPixelNumForRow == 0) continue;
+                var whitePixelNumForRow = CvInvoke.CountNonZero(tempRow);
+                var blackPixelNumForRow = matToMeasure.Cols - whitePixelNumForRow;
+                var selectedBlackPixelNumForRow = 0;
+                if (whitePixelNumForRow == 0) continue;
 
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
@@ -1175,47 +1554,31 @@ namespace ASAP_WPF
                     if (!foundFirstWhitePixelInFrontOfCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
                     {
                         foundFirstWhitePixelInFrontOfCellInGivenRow = true;
-                        firstWhitBeforeIDx = colIdx;
                     }
 
                     if (foundFirstWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue && WHITE_PIXEL == prevPixelVal)
                     {
                         foundLastWhitePixelInFrontOfCellInGivenRow = true;
-                        lastWhitBeforeIDx = colIdx -1;
                     }
 
                     if (foundLastWhitePixelInFrontOfCellInGivenRow && BLACK_PIXEL == tempValue)
                     {
                         blackCounterOfSlice++;
+                        selectedBlackPixelNumForRow++;
                     }
 
-                    //
-                    if (foundLastWhitePixelInFrontOfCellInGivenRow && !foundFirstWhitePixelAfterCellInGivenRow && WHITE_PIXEL == tempValue && BLACK_PIXEL == prevPixelVal)
+                    if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
+                    //foundLastBlackPixelOfCellInGivenRow = true;
+                    //blackCounterOfSlice += selectedBlackPixelNumForRow;
+                    if (selectedBlackPixelNumForRow > whitePixelNumForRow)
                     {
-                        foundFirstWhitePixelAfterCellInGivenRow = true;
-                        firstWhitAfterIDx = colIdx;
+                        whiteCounterOfSlice += whitePixelNumForRow;
                     }
-
-                    if (!foundFirstWhitePixelAfterCellInGivenRow || BLACK_PIXEL != tempValue ||
-                        WHITE_PIXEL != prevPixelVal) continue;
-                    foundLastWhitePixelAfterOfCellInGivenRow = true;
-                    lastWhitAfterIDx = colIdx - 1;
-                    whiteCounterOfSlice += lastWhitBeforeIDx - firstWhitBeforeIDx;
-                    whiteCounterOfSlice += lastWhitAfterIDx - firstWhitAfterIDx;
                     foundFirstWhitePixelInFrontOfCellInGivenRow = false;
                     foundLastWhitePixelInFrontOfCellInGivenRow = false;
-                    foundFirstWhitePixelAfterCellInGivenRow = false;
-                    foundLastWhitePixelAfterOfCellInGivenRow = false;
                     //foundLastBlackPixelOfCellInGivenRow = false;
                     prevPixelVal = -1;
                     break;
-
-
-                    //ez még így nem jó
-                    //if (!foundLastWhitePixelInFrontOfCellInGivenRow || BLACK_PIXEL != prevPixelVal || WHITE_PIXEL != tempValue) continue;
-                    //if (foundLastWhitePixelInAfterOfCellInGivenRow) continue;
-                    //foundLastBlackPixelOfCellInGivenRow = true;
-
                 }
             }
             return blackCounterOfSlice + whiteCounterOfSlice;
@@ -1312,6 +1675,69 @@ namespace ASAP_WPF
         //https://stackoverflow.com/questions/4122527/sliding-window-minimum-algorithm
         //Az nem derült ki, hogy mekkora legyen a sliding window mérete, de lehet azt paraméterezni kellene, és kezdjük öttel
 
+        public static Mat GetBiggestAreaOfCellWithSlidingWindowSegmented(this Mat matToMeasure, int slidingWindowSize)
+        {
+            var biggestAreSoFar = -1;
+            var returnMat = new Mat();
+            //var slidingWindowMat = new Mat();
+
+
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
+            {
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
+                var slidingWindowArea = slidingWindowMat.GetAreaOfCellSlice();
+                if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
+                biggestAreSoFar = slidingWindowArea;
+                returnMat = slidingWindowMat;
+            }
+
+            return returnMat;
+        }
+
+        public static Mat GetBiggestAreaOfCellWithSlidingWindowAndContourSegmented(this Mat matToMeasure, int slidingWindowSize, VectorOfPoint contour)
+        {
+            var biggestAreSoFar = -1;
+            var returnMat = new Mat();
+            //var slidingWindowMat = new Mat();
+
+
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
+            {
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
+                var slidingWindowArea = slidingWindowMat.GetAreaOfSegmentedCellSliceWithContourSegmented(rowIdx, contour);
+                if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
+                biggestAreSoFar = slidingWindowArea;
+                returnMat = slidingWindowMat;
+            }
+
+            return returnMat;
+        }
+
+        public static Mat GetBiggestAreaOfCellWithSlidingWindowAndContoursSegmented(this Mat matToMeasure, int slidingWindowSize, VectorOfPoint innerContour, VectorOfPoint outerContour)
+        {
+            var biggestAreSoFar = -1;
+            var returnMat = new Mat();
+            //var slidingWindowMat = new Mat();
+
+
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
+            {
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
+                var slidingWindowArea = slidingWindowMat.GetAreaOfCellSliceWithContours(rowIdx, innerContour, outerContour);
+                if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
+                biggestAreSoFar = slidingWindowArea;
+                returnMat = slidingWindowMat;
+            }
+
+            return returnMat;
+        }
+
         public static Mat GetBiggestAreaOfCellWithSlidingWindow(this Mat matToMeasure, int slidingWindowSize)
         {
             var biggestAreSoFar = -1;
@@ -1347,7 +1773,55 @@ namespace ASAP_WPF
                 var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
                 if (nonZeroPixelNum == 0) continue;
                 var slidingWindowArea = slidingWindowMat.GetAreaOfCellSlice();
-                var slidingWindowAreaAlt = slidingWindowMat.GetWholeAreaOfCellSlice();
+                //var slidingWindowAreaAlt = slidingWindowMat.GetWholeAreaOfCellSlice();
+                if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
+                biggestAreSoFar = slidingWindowArea;
+                returnMat = slidingWindowMat;
+                rowIdxToReturn = rowIdx;
+            }
+
+            return (returnMat, rowIdxToReturn);
+        }
+
+        public static (Mat, int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(this Mat matToMeasure, int slidingWindowSize, VectorOfPoint vector)
+        {
+            var biggestAreSoFar = -1;
+            var rowIdxToReturn = -1;
+            var returnMat = new Mat();
+            //var slidingWindowMat = new Mat();
+
+
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
+            {
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
+                var slidingWindowArea = slidingWindowMat.GetAreaOfSegmentedCellSliceWithContourSegmented(rowIdx,vector);
+                //var slidingWindowAreaAlt = slidingWindowMat.GetWholeAreaOfCellSlice();
+                if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
+                biggestAreSoFar = slidingWindowArea;
+                returnMat = slidingWindowMat;
+                rowIdxToReturn = rowIdx;
+            }
+
+            return (returnMat, rowIdxToReturn);
+        }
+
+        public static (Mat, int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(this Mat matToMeasure, int slidingWindowSize, VectorOfPoint innerContour, VectorOfPoint outerContour)
+        {
+            var biggestAreSoFar = -1;
+            var rowIdxToReturn = -1;
+            var returnMat = new Mat();
+            //var slidingWindowMat = new Mat();
+
+
+            for (var rowIdx = 0; rowIdx + slidingWindowSize - 1 < matToMeasure.Rows; rowIdx++)
+            {
+                var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
+                var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
+                if (nonZeroPixelNum == 0) continue;
+                var slidingWindowArea = slidingWindowMat.GetAreaOfCellSliceWithContours(rowIdx, innerContour, outerContour);
+                //var slidingWindowAreaAlt = slidingWindowMat.GetWholeAreaOfCellSlice();
                 if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
                 biggestAreSoFar = slidingWindowArea;
                 returnMat = slidingWindowMat;
@@ -1457,6 +1931,86 @@ namespace ASAP_WPF
     {
         var tempPointF = new PointF(basePointA.X - basePointB.X, basePointA.Y - basePointB.Y);
         return tempPointF;
+    }
+
+    public static void GetContourIntensitySet(this Mat matToMeasure, VectorOfPoint contour)
+    {
+        //https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
+
+
+        var vm = new VectorOfMat();
+        vm.Push(matToMeasure);
+        var histogram = new Mat();
+        CvInvoke.CalcHist(vm, new int[] { 0 }, new Mat(), histogram, new int[] { 255 }, new float[] { 0f, 256f }, false);
+        //Calculate cumulative distribution from the histogram
+            var accumulator = new List<float>();
+        var tempRow = histogram.Col(0);
+        var first = (float) tempRow.GetData().GetValue(0, 0);
+        accumulator.Add(first);
+        for (var rowIdx = 1; rowIdx < tempRow.Rows; rowIdx++)
+        {
+            var tempValue = (float) tempRow.GetData().GetValue(rowIdx,0);
+            accumulator.Add(accumulator[rowIdx - 1] + tempValue);
+        }
+        //Locate points to clip
+        var maximum = accumulator[accumulator.Count - 1];
+        var clipHistPrecent = 1.0;
+        clipHistPrecent *= (maximum / 100.0);
+        clipHistPrecent /= 2.0;
+        //Locate left cut
+        var minGray = 0;
+        while (accumulator[minGray] < clipHistPrecent)
+        {
+            minGray++;
+        }
+        //Locate right cut
+        var maxGray = histogram.Rows - 1;
+        while (accumulator[maxGray] >= (maximum - clipHistPrecent))
+        {
+            maxGray--;
+        }
+
+        var alpha = 255.0 / (maxGray - minGray);
+        var beta = - minGray * alpha;
+
+
+        var normalizedMat = matToMeasure.CreateNewHardCopyFromMat();
+        //var minIntensity = -1.0;
+        //var minIntensityIdxs = new int[] { };
+        //var maxIntensity = -1.0;
+        //var maxIntensityIdxs = new int[] { };
+
+        //CvInvoke.MinMaxIdx(normalizedMat,out minIntensity,out maxIntensity, minIntensityIdxs, maxIntensityIdxs, new Mat());
+
+        //var alpha = 255 / (maxIntensity / minIntensity);
+        //var beta = -minIntensity * alpha;
+
+
+        //CvInvoke.Normalize(normalizedMat, normalizedMat, alpha, beta, NormType.MinMax,matToMeasure.Depth);
+
+        CvInvoke.ConvertScaleAbs(normalizedMat, normalizedMat, alpha,beta);
+
+
+        var contourIntensitySet = new HashSet<byte>();
+        var innerIntensitySet = new HashSet<byte>();
+        var outerIntensitySet = new HashSet<byte>();
+
+        for (var rowIdx = 0; rowIdx < normalizedMat.Rows; rowIdx++)
+        {
+            var tempMatRow = normalizedMat.Row(rowIdx);
+
+            for (var colIdx = 0; colIdx < normalizedMat.Cols; colIdx++)
+            {
+                var tempValue = (byte)tempMatRow.GetData().GetValue(0,colIdx);
+                var tempPointF = new Point(rowIdx,colIdx);
+                //var tempPointF = new Point (colIdx,rowIdx);
+                var dist = CvInvoke.PointPolygonTest(contour, tempPointF, false);
+                if (dist < 0) outerIntensitySet.Add(tempValue);
+                else if (dist > 0) innerIntensitySet.Add(tempValue);
+                else if (dist == 0) contourIntensitySet.Add(tempValue);
+            }
+        }
+        MainWindow.ImageProcessorExaminer.AddImage(normalizedMat.CreateNewHardCopyFromMat(), "GetContourIntensitySet_normalizedMat");
     }
 
     }

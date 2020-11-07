@@ -23,6 +23,7 @@ namespace ASAP_WPF
         {
             InitializeComponent();
             ImageProcessorImgBox.SizeMode = PictureBoxSizeMode.Zoom;
+            ImageProcessorImgBox.FunctionalMode = Emgu.CV.UI.ImageBox.FunctionalModeOption.Everything;
             ImgList = new Dictionary<string, Mat>();
         }
 

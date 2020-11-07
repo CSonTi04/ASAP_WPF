@@ -27,6 +27,7 @@ namespace ASAP_WPF
         public int AdaptiveThresholdConstant { get; set; }
 
         public Mat ImageMat { get; set; }
+        public Mat OgImageMat { get; set; }
         public Mat ContourImageMat { get; set; }
         public VectorOfVectorOfPoint Contours { get; set; }
         public VectorOfVectorOfPoint ContoursToReturn { get; set; }
@@ -58,6 +59,8 @@ namespace ASAP_WPF
 
             try
             {
+                this.OgImageMat = this.ImageMat.CreateNewHardCopyFromMat();
+
                 //Itt megkellene nézni, hogy mik vannak minden enum mögött, hogy van-e jobb alternatíva
                 //Blurring image
                 var tempSize = new Size(5, 5);
@@ -117,12 +120,14 @@ namespace ASAP_WPF
                 //Empty out objects contours
                 ContoursToReturn = new VectorOfVectorOfPoint();
                 //Image to be overlayed, with alpha values
-                ContourImageMat = new Mat(this.ImageMat.Rows, this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U, 4);
+                //ContourImageMat = new Mat(this.ImageMat.Rows, this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U, 4);
+                ContourImageMat = OgImageMat.CreateNewHardCopyFromMat();
+                CvInvoke.CvtColor(ContourImageMat, ContourImageMat, ColorConversion.Gray2Bgr);
                 //ContourImageMat = new Mat(this.ImageMat.Rows, this.ImageMat.Cols, Emgu.CV.CvEnum.DepthType.Cv8U, 1);
-                MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
+                //MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
                 dims = Contours.Size;
 
-                var tempVovoPonitf = new VectorOfVectorOfPointF();
+                var tempVoVoPointF = new VectorOfVectorOfPointF();
 
                 for (var idx = 0; idx < dims; idx++)
                 {
@@ -145,12 +150,13 @@ namespace ASAP_WPF
                     }
                     ContoursToReturn.Push(con);
                     //UprightBoundingRectangles.Add(CvInvoke.BoundingRectangle(con));
-                    CvInvoke.DrawContours(ContourImageMat, Contours, 0, new MCvScalar(0, 255, 0, 255), 2);
+                    //CvInvoke.DrawContours(ContourImageMat, Contours, 0, new MCvScalar(0, 255, 0, 255), 2);
+                    CvInvoke.DrawContours(ContourImageMat, Contours, -1, new MCvScalar(0, 255, 0, 255), 1);
 
                     var rect = CvInvoke.MinAreaRect(con);
                     var box = CvInvoke.BoxPoints(rect);
                     var boxVec = new VectorOfPointF(box);
-                    tempVovoPonitf.Push(boxVec);
+                    tempVoVoPointF.Push(boxVec);
                     /*
                     //TODO na ez így pont nem jó |
                     var rect = CvInvoke.MinAreaRect(con);
@@ -165,14 +171,14 @@ namespace ASAP_WPF
                     //köszépvonalon egy 10 px-es csíkkal végigmenni, és ahol "fekete", az alapján meg lehet a közepe
                     */
                 }
-
-                this.AngledBoundingBoxesToReturn = tempVovoPonitf.ConvertToVectorOfPoint();
+                MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
+                this.AngledBoundingBoxesToReturn = tempVoVoPointF.ConvertToVectorOfPoint();
 
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
                 //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
                 //CvInvoke.PutText(this.ImageMat, "{" + ContoursToReturn.Size + "}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);
                 //this.DetectedCellCount = ContoursToReturn.Size;
-                MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_PutText");
+                //MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_PutText");
                 //Ez valyon mikor került ide?
                 //CvInvoke.EqualizeHist(this.ImageMat,this.ImageMat);
                 //itt kellene visszaadni a szálat!
