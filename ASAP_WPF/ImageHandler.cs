@@ -730,7 +730,9 @@ namespace ASAP_WPF
 
             var rotatedRoiMat = newRoiMat.RotMat(contour);
             var rotatedRoiMatOgPic = newRoiMatOgPic.RotMatGreyscale(contour,0.0);
-            var newGrayScaleContour = rotatedRoiMatOgPic.DetectOnlyCellInMat();
+
+            //var newGrayScaleContour = rotatedRoiMatOgPic.DetectBiggestCellInMat();
+            var newGrayScaleContour = rotatedRoiMatOgPic.DetectSmallestCellInMat();
             rotatedRoiMatOgPic.GetContourIntensitySet(newGrayScaleContour);
 
             //var rotatedRoiMatAlt = newRoiMat.RotMat(contour, 90.0);
@@ -750,7 +752,9 @@ namespace ASAP_WPF
             var sizeEndPointWithContours = rotatedRoiMat.GetPointsOfWidestSliceOfCellSegmentedWithContours(newContours[1], newContours[0]);
 
 
-            var newContour = rotatedRoiMat.DetectOnlyCellInMat();
+            //var newContour = rotatedRoiMat.DetectBiggestCellInMat();
+            //var newContour = rotatedRoiMat.DetectBiggestCellInMat();
+            var newContour = rotatedRoiMat.DetectSmallestCellInMat();
 
 
             //TEST

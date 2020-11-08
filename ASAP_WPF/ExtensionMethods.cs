@@ -106,25 +106,18 @@ namespace ASAP_WPF
             return tempPoint;
         }
 
-        public static VectorOfPoint DetectOnlyCellInMat(this Mat matToSample)
+        public static VectorOfPoint DetectBiggestCellInMat(this Mat matToSample)
         {
-            //valami félrement bassza meg
             var contours = new VectorOfVectorOfPoint();
             var contoursToReturn = new VectorOfVectorOfPoint();
             var hierarchy = new Mat();
             CvInvoke.FindContours(matToSample, contours, hierarchy, Emgu.CV.CvEnum.RetrType.Tree, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
-            double maxArea = -1;
+            var maxArea = double.MinValue;
             var maxAreaContour = new VectorOfPoint();
 
             for (var idx = 0; idx < contours.Size; idx++)
             {
                 var con = contours[idx];
-
-                //if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
-                //{
-                //    continue;
-                //}
-                //contoursToReturn.Push(con);
                 var tempArea = CvInvoke.ContourArea(con);
                 if (!(tempArea > maxArea)) continue;
                 maxArea = tempArea;
@@ -132,14 +125,37 @@ namespace ASAP_WPF
             }
             contoursToReturn.Push(maxAreaContour);
 
-            if (contoursToReturn.Size > 1) throw new Exception("More than one complete contour in ROI!");
+            //if (contoursToReturn.Size > 1) throw new Exception("More than one complete contour in ROI!");
+
+            return contoursToReturn[0];
+        }
+
+        public static VectorOfPoint DetectSmallestCellInMat(this Mat matToSample)
+        {
+            var contours = new VectorOfVectorOfPoint();
+            var contoursToReturn = new VectorOfVectorOfPoint();
+            var hierarchy = new Mat();
+            CvInvoke.FindContours(matToSample, contours, hierarchy, Emgu.CV.CvEnum.RetrType.Tree, Emgu.CV.CvEnum.ChainApproxMethod.ChainApproxSimple);
+            var minArea = double.MaxValue;
+            var minAreaContour = new VectorOfPoint();
+
+            for (var idx = 0; idx < contours.Size; idx++)
+            {
+                var con = contours[idx];
+                var tempArea = CvInvoke.ContourArea(con);
+                if (!(tempArea < minArea)) continue;
+                minArea = tempArea;
+                minAreaContour = con;
+            }
+            contoursToReturn.Push(minAreaContour);
+
+            //if (contoursToReturn.Size > 1) throw new Exception("More than one complete contour in ROI!");
 
             return contoursToReturn[0];
         }
 
         public static List<VectorOfPoint> DetectCellContoursInMat(this Mat matToSample)
         {
-            //valami félrement bassza meg
             var contours = new VectorOfVectorOfPoint();
             var contoursToReturn = new List<VectorOfPoint>();
             var hierarchy = new Mat();
@@ -149,25 +165,24 @@ namespace ASAP_WPF
             for (var idx = 0; idx < contours.Size; idx++)
             {
                 var con = contours[idx];
-
-                //if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
-                //{
-                //    continue;
-                //}
-                //contoursToReturn.Push(con);
-                //var tempArea = CvInvoke.ContourArea(con);
-                //if (!(tempArea > maxArea)) continue;
-                //maxArea = tempArea;
-                //maxAreaContour = con;
                 contoursToReturn.Add(con);
             }
 
 
-            if (contoursToReturn.Count > 2) throw new Exception("More than one complete contour in ROI!");
+            if (contoursToReturn.Count > 2) throw new Exception("More than two complete contour in ROI!");
 
             contoursToReturn.OrderByDescending(x => CvInvoke.ContourArea(x));
 
             return contoursToReturn;
+        }
+
+        public static void DrawContourOnMat(this Mat matToDrawOn, VectorOfVectorOfPoint contours, MCvScalar color)
+        {
+            if (matToDrawOn.NumberOfChannels < 3)
+            {
+                CvInvoke.CvtColor(matToDrawOn,matToDrawOn,ColorConversion.Gray2Bgr);
+            }
+            CvInvoke.DrawContours(matToDrawOn, contours,-1,color);
         }
 
         public static Mat RotMatOnly(this Mat uprightBondingRectangleMat, VectorOfPoint contour, double angleOffset)
@@ -909,7 +924,8 @@ namespace ASAP_WPF
 
             // CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
 
-            var newContour = matToMeasure.DetectOnlyCellInMat();
+            //var newContour = matToMeasure.DetectBiggestCellInMat();
+            var newContour = matToMeasure.DetectSmallestCellInMat();
             var tempBBox = CvInvoke.MinAreaRect(newContour);
             var boxPoints = tempBBox.GetVertices();
             points.Push(boxPoints.ConvertToPointArray());
@@ -942,8 +958,8 @@ namespace ASAP_WPF
             //MVCRect tempRect = new MVSRect();
 
             //roiMat = roiMat(roiRectangle);
-            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(matToMeasure, 5, innerContour, outerContour);
-            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(biggestAreaWindowAndIdx.Item1, 1, innerContour, innerContour);
+            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(matToMeasure, 5, 0,innerContour, outerContour);
+            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(biggestAreaWindowAndIdx.Item1, 1, biggestAreaWindowAndIdx.Item2, innerContour, innerContour);
             var pointPair = biggestAreaRowAndId.Item1.GetCenterIdxOfDiffractionLineSlice();
 
             var rowIdx = biggestAreaWindowAndIdx.Item2 + biggestAreaRowAndId.Item2;
@@ -964,7 +980,8 @@ namespace ASAP_WPF
 
             // CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
 
-            var newContour = matToMeasure.DetectOnlyCellInMat();
+            //var newContour = matToMeasure.DetectBiggestCellInMat();
+            var newContour = matToMeasure.DetectSmallestCellInMat();
             var tempBBox = CvInvoke.MinAreaRect(newContour);
             var boxPoints = tempBBox.GetVertices();
             points.Push(boxPoints.ConvertToPointArray());
@@ -997,8 +1014,8 @@ namespace ASAP_WPF
             //MVCRect tempRect = new MVSRect();
 
             //roiMat = roiMat(roiRectangle);
-            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(matToMeasure, 5, contour);
-            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(biggestAreaWindowAndIdx.Item1, 1, contour);
+            var biggestAreaWindowAndIdx = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(matToMeasure, 5, 0,contour);
+            var biggestAreaRowAndId = GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(biggestAreaWindowAndIdx.Item1, 1, biggestAreaWindowAndIdx.Item2,contour);
             var pointPair = biggestAreaRowAndId.Item1.GetCenterIdxOfDiffractionLineSlice();
 
             var rowIdx = biggestAreaWindowAndIdx.Item2 + biggestAreaRowAndId.Item2;
@@ -1019,7 +1036,8 @@ namespace ASAP_WPF
 
             // CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
 
-            var newContour = matToMeasure.DetectOnlyCellInMat();
+            //var newContour = matToMeasure.DetectBiggestCellInMat();
+            var newContour = matToMeasure.DetectSmallestCellInMat();
             var tempBBox = CvInvoke.MinAreaRect(newContour);
             var boxPoints = tempBBox.GetVertices();
             points.Push(boxPoints.ConvertToPointArray());
@@ -1155,6 +1173,13 @@ namespace ASAP_WPF
             var firstOffsetToReturn = 0;
             var secondOffsetToReturn = 0;
 
+            var cellWithContour = uprightBondingRectangleMat.CreateNewHardCopyFromMat();
+            var VoVoPoint = new VectorOfVectorOfPoint();
+            VoVoPoint.Push(new VectorOfPoint[] { contour});
+            cellWithContour.DrawContourOnMat(VoVoPoint, new MCvScalar(0, 255, 0));
+            MainWindow.ImageProcessorExaminer.AddImage(cellWithContour.CreateNewHardCopyFromMat(),
+                "GetWidestSliceOfCellLengthInPxWithContour_cellWithContour");
+
             try
             {
                 var (firstOffset, secondOffset) = biggestAreaRow.GetCenterIdxOfDiffractionLineSlice();
@@ -1185,6 +1210,16 @@ namespace ASAP_WPF
                 "GetWidestSliceOfCellLengthInPxWithContours_biggestAreaRow");
             var firstOffsetToReturn = 0;
             var secondOffsetToReturn = 0;
+
+            var cellWithContour = uprightBondingRectangleMat.CreateNewHardCopyFromMat();
+            var VoVoPoint = new VectorOfVectorOfPoint();
+            VoVoPoint.Push(new VectorOfPoint[] {innerContour, outerContour});
+            cellWithContour.DrawContourOnMat(VoVoPoint, new MCvScalar(0,255,0) );
+            MainWindow.ImageProcessorExaminer.AddImage(cellWithContour.CreateNewHardCopyFromMat(),
+                "GetWidestSliceOfCellLengthInPxWithContours_cellWithContour");
+
+
+
 
             try
             {
@@ -1346,7 +1381,9 @@ namespace ASAP_WPF
 
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
-                    var tempPointF = new PointF(startRowIdxOffset + rowIdx,colIdx);
+                    //TODO eval if ok or not
+                    //var tempPointF = new PointF(startRowIdxOffset + rowIdx, colIdx);
+                    var tempPointF = new PointF(colIdx, startRowIdxOffset + rowIdx);
                     var tempContourDistance = CvInvoke.PointPolygonTest(contour, tempPointF, false);
                     var tempValue = (byte)tempRow.GetData().GetValue(0, colIdx);
 
@@ -1401,7 +1438,9 @@ namespace ASAP_WPF
 
                 for (var colIdx = 0; colIdx < matToMeasure.Cols; colIdx++)
                 {
-                    var tempPointF = new PointF(startRowIdxOffset + rowIdx, colIdx);
+                    //TODO eval if ok or not
+                    //var tempPointF = new PointF(startRowIdxOffset + rowIdx, colIdx);
+                    var tempPointF = new PointF(colIdx,startRowIdxOffset + rowIdx);
                     var tempInnerContourDistance = CvInvoke.PointPolygonTest(innerContour, tempPointF, false);
                     var tempOuterContourDistance = CvInvoke.PointPolygonTest(outerContour, tempPointF, false);
                     if (tempInnerContourDistance > 0)
@@ -1783,7 +1822,7 @@ namespace ASAP_WPF
             return (returnMat, rowIdxToReturn);
         }
 
-        public static (Mat, int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(this Mat matToMeasure, int slidingWindowSize, VectorOfPoint vector)
+        public static (Mat, int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContour(this Mat matToMeasure, int slidingWindowSize, int rowIdxOffset, VectorOfPoint vector)
         {
             var biggestAreSoFar = -1;
             var rowIdxToReturn = -1;
@@ -1807,7 +1846,7 @@ namespace ASAP_WPF
             return (returnMat, rowIdxToReturn);
         }
 
-        public static (Mat, int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(this Mat matToMeasure, int slidingWindowSize, VectorOfPoint innerContour, VectorOfPoint outerContour)
+        public static (Mat, int) GetBiggestAreaOfCellWithSlidingWindowAndRowIndexWithContours(this Mat matToMeasure, int slidingWindowSize, int rowIdxOffset,VectorOfPoint innerContour, VectorOfPoint outerContour)
         {
             var biggestAreSoFar = -1;
             var rowIdxToReturn = -1;
@@ -1820,7 +1859,7 @@ namespace ASAP_WPF
                 var slidingWindowMat = matToMeasure.GetRowsFromRange(rowIdx, rowIdx + slidingWindowSize - 1);
                 var nonZeroPixelNum = CvInvoke.CountNonZero(slidingWindowMat);
                 if (nonZeroPixelNum == 0) continue;
-                var slidingWindowArea = slidingWindowMat.GetAreaOfCellSliceWithContours(rowIdx, innerContour, outerContour);
+                var slidingWindowArea = slidingWindowMat.GetAreaOfCellSliceWithContours(rowIdx + rowIdxOffset, innerContour, outerContour);
                 //var slidingWindowAreaAlt = slidingWindowMat.GetWholeAreaOfCellSlice();
                 if (biggestAreSoFar >= slidingWindowArea) continue;// itt jó kérdés, hogy az egyenlősgéet megengedjüke
                 biggestAreSoFar = slidingWindowArea;
