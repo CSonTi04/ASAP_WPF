@@ -783,29 +783,44 @@ namespace ASAP_WPF
 
 
             //var ogBBoxPoints = angledBoundingRectangle.GetVertices().ReorderBoxPoints();
-            var ogBBoxPoints = angledBoundingRectangle.GetVertices();
-            var ogBBoxSize = angledBoundingRectangle.Size;
+            //var ogBBoxPoints = angledBoundingRectangle.GetVertices();
+            //var ogBBoxSize = angledBoundingRectangle.Size;
 
             //var bBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices().ReorderBoxPoints();
-            var refBBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices();
-            var refBBoxSize = CvInvoke.MinAreaRect(newContour).Size;
+            //var refBBoxPoints = CvInvoke.MinAreaRect(newContour).GetVertices();
+            //var refBBoxSize = CvInvoke.MinAreaRect(newContour).Size;
 
-            ogBBoxPoints = ogBBoxPoints.RotatePointsUntilLengthsAreSame(refBBoxPoints);
+            //ogBBoxPoints = ogBBoxPoints.RotatePointsUntilLengthsAreSame(refBBoxPoints);
 
             //var rotationMat = newRoiMat.RotMatOnly(contour,0);
 
-            var locTriangleOne = new LocatorTriangle(refBBoxPoints[0], refBBoxPoints[1],sizeEndPoint.Item1);
-            locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[1]);
+            //var locTriangleOne = new LocatorTriangle(refBBoxPoints[0], refBBoxPoints[1],sizeEndPoint.Item1);
+            //locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[1]);
             //locTriangleOne.CalculateNewPPositionReverseAffine(rotationMat);
-            var locTriangleTwo = new LocatorTriangle(refBBoxPoints[2], refBBoxPoints[3], sizeEndPoint.Item2);
-            locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[2], ogBBoxPoints[3]);
+            //var locTriangleTwo = new LocatorTriangle(refBBoxPoints[2], refBBoxPoints[3], sizeEndPoint.Item2);
+            //locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[2], ogBBoxPoints[3]);
             //locTriangleTwo.CalculateNewPPositionReverseAffine(rotationMat);
 
-            var points = new VectorOfPointF();
+            //var points = new VectorOfPointF();
             //points.Push(new PointF[]{ locTriangleOne.TransformedPointPMinus, locTriangleOne.TransformedPointPPlus , locTriangleTwo.TransformedPointPMinus, locTriangleTwo.TransformedPointPPlus });
-            points.Push(new PointF[] {  locTriangleOne.TransformedPointPPlus, locTriangleTwo.TransformedPointPPlus });
-            this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(points.ConvertToVectorOfPoint(), new MCvScalar(0,0,255));
-
+            //points.Push(new PointF[] {  locTriangleOne.TransformedPointPPlus, locTriangleTwo.TransformedPointPPlus });
+            Debug.Print(ImgName);
+            Debug.Print(contour.GetContourCenterPoint().ToString());
+            //First
+            var firstPoints = ExtensionMethods.GetDiffractionBandHalvingPointsToDrawBack(sizeEndPoint,contour,newContour);
+            this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(firstPoints.ConvertToVectorOfPoint(), new MCvScalar(0,0,255));
+            Debug.Print("FirstMethod");
+            Debug.Print(firstPoints.ToPrintableString());
+            //Second
+            var secondPoints = ExtensionMethods.GetDiffractionBandHalvingPointsToDrawBack(sizeEndPointWithContour, contour, newContour);
+            this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(secondPoints.ConvertToVectorOfPoint(), new MCvScalar(0, 255, 0));
+            Debug.Print("SecondMethod");
+            Debug.Print(secondPoints.ToPrintableString());
+            //Third
+            var thirdPoints = ExtensionMethods.GetDiffractionBandHalvingPointsToDrawBack(sizeEndPointWithContours, contour, newContour);
+            this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(thirdPoints.ConvertToVectorOfPoint(), new MCvScalar(255, 0, 0));
+            Debug.Print("ThirdMethod");
+            Debug.Print(thirdPoints.ToPrintableString());
             //var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
 
             //var sizeInPx = -1;

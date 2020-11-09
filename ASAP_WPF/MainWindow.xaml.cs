@@ -484,12 +484,12 @@ namespace ASAP_WPF
             try
             {
                 var newContourCenter = LastSelectedContour;
-            var lastSelectedContourCenterPoint = newContourCenter.GetContourCenterPoint();
-            this.LastClickedPoint = lastSelectedContourCenterPoint;
-            var newlyFoundContour = ImageHandler.GetContour(lastSelectedContourCenterPoint);
-            if (null == newlyFoundContour) return;
-            this.LastSelectedContour = newlyFoundContour;
-            SetLengthProperties();
+                var lastSelectedContourCenterPoint = newContourCenter.GetContourCenterPoint();
+                this.LastClickedPoint = lastSelectedContourCenterPoint;
+                var newlyFoundContour = ImageHandler.GetContour(lastSelectedContourCenterPoint);
+                if (null == newlyFoundContour) return;
+                this.LastSelectedContour = newlyFoundContour;
+                SetLengthProperties();
             }
             catch (Exception e)
             {
