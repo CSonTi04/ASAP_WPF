@@ -732,8 +732,8 @@ namespace ASAP_WPF
             var rotatedRoiMatOgPic = newRoiMatOgPic.RotMatGreyscale(contour,0.0);
 
             //var newGrayScaleContour = rotatedRoiMatOgPic.DetectBiggestCellInMat();
-            var newGrayScaleContour = rotatedRoiMatOgPic.DetectSmallestCellInMat();
-            rotatedRoiMatOgPic.GetContourIntensitySet(newGrayScaleContour);
+            //var newGrayScaleContour = rotatedRoiMatOgPic.DetectSmallestCellInMat();
+            //rotatedRoiMatOgPic.GetContourIntensitySet(newGrayScaleContour);
 
             //var rotatedRoiMatAlt = newRoiMat.RotMat(contour, 90.0);
 

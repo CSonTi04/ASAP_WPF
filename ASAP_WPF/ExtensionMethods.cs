@@ -91,10 +91,13 @@ namespace ASAP_WPF
 
         public static Point GetContourCenterPoint(this VectorOfPoint contour)
         {
+            var tempPoint = Point.Empty;
+            if (null == contour) return tempPoint;
             var moment = CvInvoke.Moments(contour);
             var cx = moment.M10 / moment.M00;
             var cy = moment.M01 / moment.M00;
-            var tempPoint = new Point((int) cx, (int) cy);
+            tempPoint = new Point((int)cx, (int)cy);
+
             return tempPoint;
         }
 
@@ -121,6 +124,7 @@ namespace ASAP_WPF
             {
                 var con = contours[idx];
                 var tempArea = CvInvoke.ContourArea(con);
+                if ((tempArea < 800)) continue;
                 if (!(tempArea > maxArea)) continue;
                 maxArea = tempArea;
                 maxAreaContour = con;
@@ -147,6 +151,7 @@ namespace ASAP_WPF
             {
                 var con = contours[idx];
                 var tempArea = CvInvoke.ContourArea(con);
+                if ((tempArea < 800)) continue;
                 if (!(tempArea < minArea)) continue;
                 minArea = tempArea;
                 minAreaContour = con;
@@ -171,11 +176,14 @@ namespace ASAP_WPF
             for (var idx = 0; idx < contours.Size; idx++)
             {
                 var con = contours[idx];
+                var tempArea = CvInvoke.ContourArea(con);
+                if ((tempArea < 800)) continue;
                 contoursToReturn.Add(con);
             }
 
 
-            if (contoursToReturn.Count > 2) throw new Exception("More than two complete contour in ROI!");
+            //if (contoursToReturn.Count > 2) throw new Exception("More than two complete contour in ROI!");
+            if (contoursToReturn.Count > 2) contoursToReturn.RemoveRange(2, contoursToReturn.Count - 2);
 
             contoursToReturn.OrderByDescending(x => CvInvoke.ContourArea(x));
 
@@ -2136,7 +2144,7 @@ namespace ASAP_WPF
         public static string ToPrintableString(this VectorOfPointF vector)
         {
             var temp = "";
-            foreach (var v in vector.ToArray())
+            foreach (var v in vector.ToArray().Reverse())
             {
                 temp += v.ToString();
                 temp += "\r\n";
