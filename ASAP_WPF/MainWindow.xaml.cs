@@ -311,6 +311,7 @@ namespace ASAP_WPF
         {
             var tempText = CurrIdx.Text;
             if (!IsTextAllowed(tempText)) return;
+            if (tempText.Equals("")) return;
             var idxToJumpTo = int.Parse(tempText);
             ImageHandler.JumpToImage(idxToJumpTo);
             ShownImageChanged();

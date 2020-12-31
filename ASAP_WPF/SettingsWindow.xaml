@@ -8,7 +8,7 @@
         Closing="Window_Closing"
         Title="Settings Window" Height="150" Width="300">
     <Grid>
-        <CheckBox Name="SaveOutputFiels"  Content="Save output files into folder" HorizontalAlignment="Left" Margin="10,78,0,0" VerticalAlignment="Top"/>
+        <!-- <CheckBox Name="SaveOutputFiels"  Content="Save output files into folder" HorizontalAlignment="Left" Margin="10,78,0,0" VerticalAlignment="Top"/> -->
         <Label Content="Pixel per micrometer" HorizontalAlignment="Left" Margin="93,18,0,0" VerticalAlignment="Top"/>
         <Slider Name="PPM_Sl"  HorizontalAlignment="Left" Margin="10,49,0,0" VerticalAlignment="Top" Width="210" Value="93" Minimum="1" Maximum="200" TickFrequency="5"/>
         <TextBox Margin="225,49,10.333,0" TextWrapping="Wrap" VerticalAlignment="Top" Text="{Binding ElementName=PPM_Sl, Path=Value, UpdateSourceTrigger=PropertyChanged}" TextAlignment="Center"/>

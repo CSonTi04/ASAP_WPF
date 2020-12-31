@@ -143,7 +143,6 @@ namespace ASAP_WPF
                     //http://www.emgu.com/forum/viewtopic.php?t=6333
                     //http://www.emgu.com/forum/viewtopic.php?f=7&t=5263
                     //https://stackoverrun.com/fr/q/11437249
-                    //Hát bazdmeg erre sosem jöttem volna rá
                     if ((int)hierarchy.GetData().GetValue(0, idx, 3) < 0)
                     {
                         continue;
@@ -158,36 +157,26 @@ namespace ASAP_WPF
                     var boxVec = new VectorOfPointF(box);
                     tempVoVoPointF.Push(boxVec);
                     /*
-                    //TODO na ez így pont nem jó |
                     var rect = CvInvoke.MinAreaRect(con);
                     //var box = CvInvoke.BoxPoints(rect);
                     //VectorOfPointF boxVec = new VectorOfPointF(box);
                     VectorOfVectorOfPoint boxVec = new VectorOfVectorOfPoint(con);
                     //az jókérdés, hogy ez most a megfelelő alak-e vagy sem
                     CvInvoke.DrawContours(ContourImageMat, boxVec, 0, new MCvScalar(0, 255, 0, 255), 2);
-                    //TODO "több doboz megtalálálása"
-                    //TODO "Azzal még kezdeni valamit"
-                    //hossz tenfelyen köszéptől középig
-                    //köszépvonalon egy 10 px-es csíkkal végigmenni, és ahol "fekete", az alapján meg lehet a közepe
                     */
                 }
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat");
                 this.AngledBoundingBoxesToReturn = tempVoVoPointF.ConvertToVectorOfPoint();
 
                 MainWindow.ImageProcessorExaminer.AddImage(ContourImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_ContourImageMat_2");
-                //Na ez nem tudom, hogy mi lehet, de most már értem legalább azt a jelet a bal felső sarokban :D
                 //CvInvoke.PutText(this.ImageMat, "{" + ContoursToReturn.Size + "}", new Point(100, 300), Emgu.CV.CvEnum.FontFace.HersheySimplex, 8.0, new MCvScalar(255), 5);
                 //this.DetectedCellCount = ContoursToReturn.Size;
                 //MainWindow.ImageProcessorExaminer.AddImage(ImageMat.CreateNewHardCopyFromMat(), "ImageProcessor_PutText");
-                //Ez valyon mikor került ide?
                 //CvInvoke.EqualizeHist(this.ImageMat,this.ImageMat);
-                //itt kellene visszaadni a szálat!
 
                 //new PopupImage(ImageMat, "ImgProcessor_ImageMat").Show();
                 //new PopupImage(ContourImageMat, "ImgProcessor_ContourImageMat").Show();
 
-
-                //Szóval valamiért itt 4 channeles képekkel foglalkozunk, ami annyira nem jó???
             }
             catch (Exception e)
             {

@@ -39,6 +39,13 @@ namespace ASAP_WPF
         public Dictionary<VectorOfPoint, double> CellLengths { get; set; }
 
         public string[] AllowedFileExtensions = new[] {".jpg", ".tif"};
+        public enum CellLengthCalcModTypeEnum
+        {
+            A,
+            K1,
+            K2,
+            Bbox
+        }
         /*
         public enum ModTypeEnum
         {
@@ -94,12 +101,8 @@ namespace ASAP_WPF
         {
             if (Files.Count <= 0 || OpenedImgNumber < 0) return;
             ImgName = Files[OpenedImgNumber];
-            //itt lehetne kísérletezni, hogy egyből két árnyalatos szürkével menjen, vagy a hisztogram generáláshoz több árnyalatos legyen
-            //tényleg meg kellene nézni, hogy ennek van -e effektje a kimenetelre
             Image = CvInvoke.Imread(ImgName, ImreadModes.ReducedGrayscale8);
             ImgProcessor.SetValues(Image, AdaptiveThresholdConstant);
-            //this.isloading == ture???? ez valami signalos lehet
-            //this.signals.image_provcessing_change.emit(True)
             Process();
         }
 
@@ -152,32 +155,15 @@ namespace ASAP_WPF
             Contours.Push(ImgProcessor.ContoursToReturn);
             Boxes.Push(ImgProcessor.AngledBoundingBoxesToReturn);
             DetectedCellCount = Contours.Size;
-            //BoxedImage = DrawAllCellContourBoundingBoxes();
             MainWindow.ImageProcessorExaminer.AddImage(OgImage.CreateNewHardCopyFromMat(), "ImageHandler_OgImage");
             MainWindow.ImageProcessorExaminer.AddImage(Image.CreateNewHardCopyFromMat(), "ImageHandler_Image");
             MainWindow.ImageProcessorExaminer.AddImage(ProcessedImage.CreateNewHardCopyFromMat(), "ImageHandler_ProcessedImage");
             MainWindow.ImageProcessorExaminer.AddImage(ContourImage.CreateNewHardCopyFromMat(), "ImageHandler_ContourImage");
-            //MainWindow.ImageProcessorExaminer.AddImage(BoxedImage.createNewHardCopyFromMat(), "ImageHandler_BoxedImage");
             ProcessOverlays();
         }
 
         public void ProcessOverlays()
         {
-            //Ide kell majd a single cell contourt átdobni
-            //var processedImgWithSingleCellContourBox = DrawCellContourBoxToNewMat(lastClickedPoint, this.ProcessedImage);
-            //MainWindow.ImageProcessorExaminer.AddImage(processedImgWithSingleCellContourBox.createNewHardCopyFromMat(), "processedImgWithSingleCellContourBox");
-            //var ogImgWithSingleCellContourBox = DrawCellContourBoxToNewMat(lastClickedPoint, this.Image);
-            ///MainWindow.ImageProcessorExaminer.AddImage(ogImgWithSingleCellContourBox.createNewHardCopyFromMat(), "ogImgWithSingleCellContourBox");
-            //this.ProcessedImgWithContourOverlay = OverlayImageMats(processedImgWithSingleCellContourBox, processedImgWithSingleCellContourBox);
-            //MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
-            //this.OgImgWithContourOverlay  = OverlayImageMats(ogImgWithSingleCellContourBox, ogImgWithSingleCellContourBox);
-            //MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
-
-            //this.ProcessedImgWithContourOverlay = OverlayImageMats(this.ProcessedImage, this.BoxedImage);
-            //MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.createNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
-            //this.OgImgWithContourOverlay  = OverlayImageMats(this.Image, this.BoxedImage);
-            //MainWindow.ImageProcessorExaminer.AddImage(OgImgWithContourOverlay.createNewHardCopyFromMat(), "OgImgWithContourOverlay");
-
             ProcessedImgWithContourOverlay = DrawAllCellContourBoundingBoxes(ProcessedImage);
             MainWindow.ImageProcessorExaminer.AddImage(ProcessedImgWithContourOverlay.CreateNewHardCopyFromMat(), "ProcessedImgWithContourOverlay");
             OgImgWithContourOverlay = DrawAllCellContourBoundingBoxes(Image);
@@ -207,8 +193,6 @@ namespace ASAP_WPF
                 {
                     tempImgMat = overlayImgMat.CreateNewHardCopyFromMat();
                 }
-                //new PopupImage(tempImgMat, "tempImgMat").Show();
-                //new PopupImage(alpha, "alpha").Show();
                 CvInvoke.Threshold(tempImgMat, alpha, 100, 255, ThresholdType.Binary);
                 matToReturn = Mat.Zeros(overlayImgMat.Size.Width, overlayImgMat.Size.Height, overlayImgMat.Depth, overlayImgMat.NumberOfChannels);
                 // Multiply the foreground with the alpha matte
@@ -245,9 +229,7 @@ namespace ASAP_WPF
             {
                 return;
             }
-
             FolderName = path;
-            //Files = new List<string>(Directory.GetFiles(path, "*.jpg")).OrderBy(q => q).ToList();
             Files = new List<string>(Directory.GetFiles(path).Where(file => AllowedFileExtensions.Any(file.ToLower().EndsWith))).OrderBy(q => q).ToList();
             OpenedImgNumber = 0;
             UpdateImage();
@@ -277,11 +259,7 @@ namespace ASAP_WPF
             {
                 return;
             }
-
             AdaptiveThresholdConstant = value;
-            //this.loading = True
-            //this.signals.image_processing_change.emit(True)
-            //ThreadPool.QueueUserWorkItem(this.ImgProcessor);
             ImgProcessor.RunThread();
         }
 
@@ -327,18 +305,6 @@ namespace ASAP_WPF
             var convertedVectorOfVectorPoint = boxVecOfVectorPoint.ConvertToVectorOfPoint();
 
             CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 114, 251, 0), 3);
-            //CvInvoke.DrawContours(matToReturn, tempVector, -1, new MCvScalar(0, 114, 251, 255), 3);
-            //return matToReturn;
-            /*
-            var tempRect = CvInvoke.MinAreaRect(tempVector);
-            var box = CvInvoke.BoxPoints(tempRect);
-            var boxVec = new VectorOfPointF(box);
-            CvInvoke.DrawContours(imgToMod, boxVec, 0, new MCvScalar(0,0,255),2);
-            CvInvoke.PutText(imgToMod, tempRect.Size.Height.ToString(CultureInfo.InvariantCulture),
-                new Point((int) (10 + box[0].X), (int) (10 + box[0].Y)),
-                FontFace.HersheySimplex, 0.65, new MCvScalar(255, 100, 100, 255), 2);
-            MainWindow.ImageProcessorExaminer.AddImage(imgToMod.createNewHardCopyFromMat(), "DrawSelectedCellContourBoxToMat");
-            */
 
         }
 
@@ -348,17 +314,6 @@ namespace ASAP_WPF
             var tempVectorOfPoint = GetContourForGivenPoint(point);
             var returnMat = imgToMimic.CreateNewMatLikeThis();
             DrawSelectedCellContourBoxToMat(returnMat, tempVectorOfPoint);
-            /*
-            var returnMat = imgToMod.createNewMatLikeThis();
-            foreach (var contour in Contours.ToArrayOfArray())
-            {
-                var tempVector = new VectorOfPoint(contour);
-                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
-                DrawSelectedCellContourBoxToMat(returnMat,tempVector);
-                break;
-            }
-            return returnMat;
-            */
             return returnMat;
         }
 
@@ -370,17 +325,6 @@ namespace ASAP_WPF
             var returnMat = imgToMod.CreateNewHardCopyFromMat();
             DrawSelectedCellContourBoxToMat(returnMat, tempVectorOfPoint);
             MainWindow.ImageProcessorExaminer.AddImage(returnMat.CreateNewHardCopyFromMat(), "DrawSelectedCellContourBoxToNewMat");
-            /*
-            var returnMat = imgToMod.createNewMatLikeThis();
-            foreach (var contour in Contours.ToArrayOfArray())
-            {
-                var tempVector = new VectorOfPoint(contour);
-                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
-                DrawSelectedCellContourBoxToMat(returnMat,tempVector);
-                break;
-            }
-            return returnMat;
-            */
             return returnMat;
         }
 
@@ -397,9 +341,6 @@ namespace ASAP_WPF
                     tempVectorList.Add(tempVectorOfPoint);
                 }
             }
-
-            //if (tempVectorList.Count > 1) throw new Exception("Point is inside of more than one contour!");
-            //if (tempVectorList.Count == 0) throw new Exception("Point is not inside registered contours!");
             return tempVectorOfPoint;
         }
 
@@ -449,10 +390,6 @@ namespace ASAP_WPF
                 boxVecOfVectorPoint.Push(boxVec);
 
             }
-            //CvInvoke.DrawContours(matToReturn, boxVecOfVectorPoint, 0, new MCvScalar(0, 255, 0, 255), 2);
-            //contourIdx	Parameter indicating a contour to draw. If it is negative, all the contours are drawn.
-            //
-            //var tempMat = boxVecOfVectorPoint.GetInputOutputArray().GetMat();
 
             var convertedVectorOfVectorPoint = boxVecOfVectorPoint.ConvertToVectorOfPoint();
             CvInvoke.DrawContours(matToReturn, convertedVectorOfVectorPoint, -1, new MCvScalar(0, 255, 0, 255), 2);
@@ -461,12 +398,6 @@ namespace ASAP_WPF
 
         public void PrintAllTypeOfCellLengthToDebug(Point point)
         {
-            //var msg = "";
-            //msg.Concat("Contour: ").Concat(GetCellLengthWithContour(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
-            //msg.Concat("BoundingBox: ").Concat(GetCellLengthWithBoundingBox(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
-            //msg.Concat("BoundingBoxPoint: ").Concat(GetCellLengthWithBoundingBoxPoint(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
-            //msg.Concat("EnclosingCircle: ").Concat(GetCellLengthWithEnclosingCircle(point).ToString(CultureInfo.InvariantCulture)).Concat(Environment.NewLine);
-            //Debug.WriteLine(msg);
             var msg = new StringBuilder("");
             msg.Append("Contour: ").Append(GetCellLengthWithContour(point).ToString(CultureInfo.InvariantCulture)).Append(Environment.NewLine);
             msg.Append("BoundingBox: ").Append(GetCellLengthWithBoundingBox(point).ToString(CultureInfo.InvariantCulture)).Append(Environment.NewLine);
@@ -484,7 +415,6 @@ namespace ASAP_WPF
                 var tempVector = new VectorOfPoint(contour);
                 if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
-                //CvInvoke.BoxPoints(tempRect);
                 return tempRect.Size.Height;
             }
             return -1.0;
@@ -497,7 +427,6 @@ namespace ASAP_WPF
                 var tempVector = new VectorOfPoint(contour);
                 if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
                 var tempRect = CvInvoke.MinAreaRect(tempVector);
-                //var boxPoints = CvInvoke.BoxPoints(tempRect);
                 return tempRect.Size.Height;
             }
             return -1.0;
@@ -541,14 +470,6 @@ namespace ASAP_WPF
             var length = -1.0;
             var lengthSet = new SortedSet<double>();
             var listOfPoint = new List<PointF>(boxPoints);
-            //var cartesianListOfPointPairs = new List<(PointF,PointF)>();
-            //var crossJoinedListOfPointPairs = from x in listOfPoint from y in listOfPoint select new  { x, y };
-
-            //foreach (var currentDistance in crossJoinedListOfPointPairs.ToList().Select(pair => CalculateDistance(pair.x,pair.y)))
-            //{
-                //lengthSet.Add(currentDistance);
-            //}
-
             foreach (var currentDistance in listOfPoint.Select(currentPoint => CalculateDistance(listOfPoint[0], currentPoint)))
             {
                 lengthSet.Add(currentDistance);
@@ -602,8 +523,7 @@ namespace ASAP_WPF
 
         public List<(Point, double)> GetAllCellLengthWithCenterPoint()
         {
-            //return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new PointF((int) cx, (int) cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempRect.Size.Height, tempPoint)).Select(dummy => ((double, PointF)) dummy).ToList();
-            return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new Point((int)cx, (int)cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempPoint, tempRect.Size.Height)).Select(dummy => ((Point,double))dummy).ToList();
+             return (from contour in Contours.ToArrayOfArray() select new VectorOfPoint(contour) into tempVector let moment = CvInvoke.Moments(tempVector) let cx = moment.M10 / moment.M00 let cy = moment.M01 / moment.M00 let tempPoint = new Point((int)cx, (int)cy) let tempRect = CvInvoke.MinAreaRect(tempVector) select (tempPoint, tempRect.Size.Height)).Select(dummy => ((Point,double))dummy).ToList();
         }
 
 
@@ -637,19 +557,6 @@ namespace ASAP_WPF
 
         public Point GetContourCenterPoint(Point point)
         {
-            /*
-            var temp = new Point();
-            foreach (var contour in Contours.ToArrayOfArray())
-            {
-                var tempVector = new VectorOfPoint(contour);
-                if (!(CvInvoke.PointPolygonTest(tempVector, point, true) >= 0)) continue;
-                var moment = CvInvoke.Moments(tempVector);
-                var cx = moment.M10 / moment.M00;
-                var cy = moment.M01 / moment.M00;
-                temp = new Point((int) cx, (int) cy);
-                break;
-            }
-            */
 
             var tempVector = GetContourForGivenPoint(point);
             var moment = CvInvoke.Moments(tempVector);
@@ -669,16 +576,12 @@ namespace ASAP_WPF
 
         private void CalculateCellLengths(VectorOfPoint contour)
         {
-            //TODO ez miért is van itt?
 
             var roiRectangle = CvInvoke.BoundingRectangle(contour);
-            //var roiMat = new Mat(this.ContourImageMat, roiRectangle);//var leftHalf = new Mat(matToSlice, leftHalfRect);
             var roiMat = new Mat(this.ContourImage, roiRectangle);
             CvInvoke.CvtColor(roiMat, roiMat, ColorConversion.Bgra2Gray);
             var tempRect = CvInvoke.MinAreaRect(contour);
             var rotatedRoiMat = roiMat.RotateMatWithoutCutoff(tempRect);
-            //var pointPair = roiMat.GetPointsOfWidestSliceOfCell();
-            //var sizeInPx = Math.Sqrt(Math.Pow(pointPair.Item2.X - pointPair.Item1.X, 2) + Math.Pow(pointPair.Item2.Y - pointPair.Item2.Y, 2));
             var sizeInPx = rotatedRoiMat.GetWidestSliceOfCellLengthInPx();
             if (!CellLengths.ContainsKey(contour))
             {
@@ -693,7 +596,7 @@ namespace ASAP_WPF
 
         public double CalculateCellLength(VectorOfPoint contour)
         {
-            if (null == contour) return Double.NaN;
+            if (null == contour) return double.NaN;
 
             //TODO hierarchia kihasználása, hogy a nagyobb kontúr meg legyen, ne a doboz növelésével
             var roiRectangle = CvInvoke.BoundingRectangle(contour);

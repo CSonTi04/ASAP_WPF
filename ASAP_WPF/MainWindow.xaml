@@ -29,7 +29,7 @@
                 <TextBox x:Name="CurrIdx" TextWrapping="Wrap" Text="" Width="35" TextChanged="CurrentIndexTextChanged"/>
                 <TextBlock TextWrapping="Wrap" Text="of"/>
                 <TextBlock x:Name="NumOfPics" TextWrapping="Wrap" Text="" Width="25"/>
-                <Button x:Name="CalibrateMicroMeter" Content="Calibrate μm" Width="75" Click="CalibrateMicroMeter_OnClick" />
+                <!-- <Button x:Name="CalibrateMicroMeter" Content="Calibrate μm" Width="75" Click="CalibrateMicroMeter_OnClick" /> -->
             </Menu >
             <Menu DockPanel.Dock="Top">
                 <RadioButton x:Name="OgImgBtn" GroupName="ShownImageType" Checked="OgImgBtn_OnChecked">Original image</RadioButton>

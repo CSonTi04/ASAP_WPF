@@ -593,34 +593,6 @@ namespace ASAP_WPF
                 desiredAngleOfRotation = 90 + desiredAngleOfRotation;
             }
 
-
-
-            /*
-            def rotate_bound(image, angle):
-            # grab the dimensions of the image and then determine the
-            # center
-            (h, w) = image.shape[:2]
-            (cX, cY) = (w / 2, h / 2)
-
-            # grab the rotation matrix (applying the negative of the
-            # angle to rotate clockwise), then grab the sine and cosine
-            # (i.e., the rotation components of the matrix)
-            M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
-            cos = np.abs(M[0, 0])
-            sin = np.abs(M[0, 1])
-
-            # compute the new bounding dimensions of the image
-            nW = int((h * sin) + (w * cos))
-            nH = int((h * cos) + (w * sin))
-
-            # adjust the rotation matrix to take into account translation
-            M[0, 2] += (nW / 2) - cX
-            M[1, 2] += (nH / 2) - cY
-
-            # perform the actual rotation and return the image
-            return cv2.warpAffine(image, M, (nW, nH))
-            */
-
             //https://math.stackexchange.com/questions/2093314/rotation-matrix-of-rotation-around-a-point-other-than-the-origin
             //https://stackoverflow.com/questions/11764575/python-2-7-3-opencv-2-4-after-rotation-window-doesnt-fit-image
 
@@ -727,7 +699,6 @@ namespace ASAP_WPF
 
             var sin = Math.Sin(angle);
             var cos = Math.Cos(angle);
-            //???? most akkor ezt hogy is?
             matToReturn.SetValue(0, 0, cos);
             matToReturn.SetValue(0, 1, sin);
             matToReturn.SetValue(1, 0, -sin);
@@ -848,51 +819,8 @@ namespace ASAP_WPF
 
             var matToReturn = new Mat();
             //https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
-            /*
-             def rotate(image, angle, center=None, scale=1.0):
-            # grab the dimensions of the image
-            (h, w) = image.shape[:2]
-
-            # if the center is None, initialize it as the center of
-            # the image
-            if center is None:
-                center = (w // 2, h // 2)
-
-            # perform the rotation
-            M = cv2.getRotationMatrix2D(center, angle, scale)
-            rotated = cv2.warpAffine(image, M, (w, h))
-
-            # return the rotated image
-            return rotated
-
-            def rotate_bound(image, angle):
-            # grab the dimensions of the image and then determine the
-            # center
-            (h, w) = image.shape[:2]
-            (cX, cY) = (w / 2, h / 2)
-
-            # grab the rotation matrix (applying the negative of the
-            # angle to rotate clockwise), then grab the sine and cosine
-            # (i.e., the rotation components of the matrix)
-            M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
-            cos = np.abs(M[0, 0])
-            sin = np.abs(M[0, 1])
-
-            # compute the new bounding dimensions of the image
-            nW = int((h * sin) + (w * cos))
-            nH = int((h * cos) + (w * sin))
-
-            # adjust the rotation matrix to take into account translation
-            M[0, 2] += (nW / 2) - cX
-            M[1, 2] += (nH / 2) - cY
-
-            # perform the actual rotation and return the image
-            return cv2.warpAffine(image, M, (nW, nH))
-
-             */
             //https://en.wikipedia.org/wiki/Affine_transformation
 
-            //Ez nem volt itt a jó, de mégis, mert azért nem csináltunk bboxot, mert hogy az már van nekünk
 
             //CvInvoke.WarpAffine(uprightBondingRectangleMat,matToReturn,rotatingMat, uprightBondingRectangleMat.Size);
 
@@ -1144,7 +1072,6 @@ namespace ASAP_WPF
         {
             var delta1 = Math.Abs(reference.Item1 - eval.Item1);
             var delta2 = Math.Abs(reference.Item2 - eval.Item2);
-            //Az átlónál nem tudom mi legyen, most legyen gyök kettő < 3
             var delta3 = Math.Abs(reference.Item2 - eval.Item3);
 
             var boolToReturn = (delta1 < 1.0 && delta2 < 1.0 && Math.Sqrt(delta3) < 4.0);
@@ -1296,7 +1223,7 @@ namespace ASAP_WPF
             var firstSlice = new List<int>();
             var secondSlice = new List<int>();
             var listPointer = firstSlice;
-            var firstWhiteFound = false;
+            //var firstWhiteFound = false;
             var firstBlackAfterFirstSliceFound = false;
             var prevPixelVal = -1;
 
@@ -1307,7 +1234,7 @@ namespace ASAP_WPF
                 var tempValue = (byte) tempRow.GetData().GetValue(0, colIdx);
                 if (colIdx > 0) prevPixelVal = (byte) tempRow.GetData().GetValue(0, colIdx - 1);
                 //if (!firstBlackAfterFirstSliceFound && WHITE_PIXEL != tempValue) continue;
-                if (!firstWhiteFound) firstWhiteFound = true;
+                //if (!firstWhiteFound && WHITE_PIXEL == tempValue) firstWhiteFound = true;
                 if (!firstBlackAfterFirstSliceFound && WHITE_PIXEL == tempValue)
                 {
                     listPointer.Add(colIdx);
@@ -1374,7 +1301,7 @@ namespace ASAP_WPF
         public static (Mat, Mat) SliceMatInHalfVertically(this Mat matToSlice)
         {
             //https://answers.opencv.org/question/82641/dividing-image-horizontally-into-equal-parts/
-            //leget ezt is range-gel kellene?
+            //lehet ezt is range-gel kellene?
             if (matToSlice.Cols < 2) throw new Exception("Given matrix has 1 or no rows!");
             var leftHalfRectFirstPoint = new Point(0, 0);
             var leftHalfRectSecondPoint = new Point(matToSlice.Cols / 2, matToSlice.Height);
@@ -2002,27 +1929,6 @@ namespace ASAP_WPF
             };
         }
 
-
-        public static int GetPrevValueOfMatrix(this Mat matToMeasure, int colIdx, int rowIdx)
-        {
-            var returnVal = int.MinValue;
-
-            //if (colIdx == 0                 && rowIdx == 0)                 return returnVal;
-            //if (colIdx == 0                 && rowIdx == matToMeasure.Rows) return (int)matToMeasure.GetData().GetValue(matToMeasure.Cols, matToMeasure.Rows -1, 0);
-            //if (colIdx == matToMeasure.Cols && rowIdx == 0)                 return (int)matToMeasure.GetData().GetValue(matToMeasure.Cols, matToMeasure.Rows - 1, 0);
-            //if (colIdx == matToMeasure.Cols && rowIdx == matToMeasure.Rows) return returnVal;
-            /*
-            if (colIdx == 0 && rowIdx == 0) return returnVal;
-            if (colIdx == matToMeasure.Cols && rowIdx == matToMeasure.Rows) return (int)matToMeasure.GetData().GetValue(matToMeasure.Cols - 1, matToMeasure.Rows , 0);
-            if (colIdx <= matToMeasure.Cols && rowIdx <= matToMeasure.Rows) return (int)matToMeasure.GetData().GetValue(matToMeasure.Cols - 1, matToMeasure.Rows, 0);
-            if (colIdx <= matToMeasure.Cols && rowIdx >= matToMeasure.Rows) return (int)matToMeasure.GetData().GetValue(matToMeasure.Cols - 1, matToMeasure.Rows, 0);
-            if (colIdx >= matToMeasure.Cols && rowIdx <= matToMeasure.Rows) return returnVal;
-            if (colIdx >= matToMeasure.Cols && rowIdx >= matToMeasure.Rows) return returnVal;
-            */
-
-
-            return returnVal;
-        }
 
         public static PointF Multiply(this PointF basePointF, double amount)
         {
