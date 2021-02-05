@@ -1035,9 +1035,43 @@ namespace ASAP_WPF
             return array.Skip(array.Length - 1).Concat(array.Take(array.Length - 1)).ToArray();
         }
 
+        public static (PointF, PointF)[] LeftShift(this (PointF, PointF)[] array)
+        {
+            return array.Skip(1).Concat(array.Take(1)).ToArray();
+        }
+
+        public static (PointF, PointF)[] RightShift(this (PointF, PointF)[] array)
+        {
+            return array.Skip(array.Length - 1).Concat(array.Take(array.Length - 1)).ToArray();
+        }
+
         public static PointF[] RotatePointsUntilLengthsAreSame(this PointF[] arrayToRotate, PointF[] reference)
         {
             var arrayToReturn = new PointF[arrayToRotate.Length];
+
+            for (var i = 0; i < arrayToRotate.Length; i++)
+            {
+                arrayToReturn[i] = arrayToRotate[i];
+            }
+
+            for (var i = 0; i < arrayToRotate.Length; i++)
+            {
+                if (!arrayToReturn.GetLengthTriplet().LengthTripletIsSameMoreOrLess(reference.GetLengthTriplet()))
+                {
+                    arrayToReturn = arrayToReturn.RightShift();
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return arrayToReturn;
+        }
+
+        public static (PointF, PointF)[] RotatePointsUntilLengthsAreSame(this (PointF, PointF)[] arrayToRotate, (PointF, PointF)[] reference)
+        {
+            var arrayToReturn = new (PointF, PointF)[arrayToRotate.Length];
 
             for (var i = 0; i < arrayToRotate.Length; i++)
             {
@@ -1064,6 +1098,14 @@ namespace ASAP_WPF
             var length01 = reference[0].CalculateLengthBetweenPoint(reference[1]);
             var length02 = reference[0].CalculateLengthBetweenPoint(reference[2]);
             var length03 = reference[0].CalculateLengthBetweenPoint(reference[3]);
+            return (length01, length02, length03);
+        }
+
+        public static (double, double, double) GetLengthTriplet(this (PointF,PointF)[] reference)
+        {
+            var length01 = reference[0].Item1.CalculateLengthBetweenPoint(reference[1].Item1);
+            var length02 = reference[0].Item1.CalculateLengthBetweenPoint(reference[2].Item1);
+            var length03 = reference[0].Item1.CalculateLengthBetweenPoint(reference[3].Item1);
             return (length01, length02, length03);
         }
 
@@ -2056,6 +2098,28 @@ namespace ASAP_WPF
                 temp += "\r\n";
             }
             return temp;
+        }
+
+        public static (PointF,PointF) getSizeWithMomentAndContours(this Mat matToMeasure)
+        {
+            var firstPoint = PointF.Empty;
+            var secondPoint = PointF.Empty;
+
+            //csökkenőbe van rendezve a két kontúr
+            var detectedContours = matToMeasure.DetectCellContoursInMat();
+            var outerCircle = CvInvoke.MinEnclosingCircle(detectedContours[0].ConvertToVectorOfPoint().ToArray());
+            var innerCircle = CvInvoke.MinEnclosingCircle(detectedContours[1].ConvertToVectorOfPoint().ToArray());
+            //https://www.youtube.com/watch?v=Zd68AthoNIw
+            //a két kontúrnak ugyanúgy kellene állnia
+            var outerCircleCenterPoint = detectedContours[0].GetContourCenterPointF();
+            var tempMinAreaRect = CvInvoke.MinAreaRect(detectedContours[0]);
+            var isHeightLonger = tempMinAreaRect.Size.Height > tempMinAreaRect.Size.Width;
+
+            //CvInvoke.FitLine();
+
+
+
+            return (firstPoint, secondPoint);
         }
     }
 }
