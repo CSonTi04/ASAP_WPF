@@ -727,6 +727,16 @@ namespace ASAP_WPF
             Debug.Print(thirdPoints.ToPrintableString());
             //var sizeInPxAlt = rotatedRoiMatAlt.GetWidestSliceOfCellLengthInPX();
 
+            //GetSizeWithContoursAsVectorOfPointF
+
+            var newPoints = ExtensionMethods.getSizeWithContoursAndBoundingBoxes(rotatedRoiMat);
+            var fourthPoints = ExtensionMethods.GetDiffractionBandHalvingPointsToDrawBack(newPoints, contour, newContour);
+            this.ImageToDisplay = this.ImageToDisplay.DrawColorPixelsToMat(fourthPoints.ConvertToVectorOfPoint(), new MCvScalar(0, 255, 255));
+            Debug.Print("FourthMethod");
+            Debug.Print(fourthPoints.ToPrintableString());
+
+            var temp = ExtensionMethods.GetSizeWithContoursAsVectorOfPointF(rotatedRoiMat);
+
             //var sizeInPx = -1;
             //var sizeInPxAlt = -1;
             //var valueToReturn = sizeInPx > sizeInPxAlt ? sizeInPx : sizeInPxAlt;

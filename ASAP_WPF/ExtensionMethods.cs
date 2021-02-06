@@ -1069,6 +1069,7 @@ namespace ASAP_WPF
             return arrayToReturn;
         }
 
+        
         public static (PointF, PointF)[] RotatePointsUntilLengthsAreSame(this (PointF, PointF)[] arrayToRotate, (PointF, PointF)[] reference)
         {
             var arrayToReturn = new (PointF, PointF)[arrayToRotate.Length];
@@ -2089,6 +2090,22 @@ namespace ASAP_WPF
             return points;
         }
 
+        public static VectorOfPointF GetDiffractionBandHalvingPointsToDrawBack((PointF, PointF) sizeEndPoint, VectorOfPoint refContour, VectorOfPoint evalContour)
+        {
+            var angledBoundingRectangle = CvInvoke.MinAreaRect(refContour);
+            var ogBBoxPoints = angledBoundingRectangle.GetVertices();
+            var refBBoxPoints = CvInvoke.MinAreaRect(evalContour).GetVertices();
+            ogBBoxPoints = ogBBoxPoints.RotatePointsUntilLengthsAreSame(refBBoxPoints);
+            var locTriangleOne = new LocatorTriangle(refBBoxPoints[0], refBBoxPoints[1], sizeEndPoint.Item1);
+            locTriangleOne.CalculateNewPPosition(ogBBoxPoints[0], ogBBoxPoints[1]);
+            var locTriangleTwo = new LocatorTriangle(refBBoxPoints[2], refBBoxPoints[3], sizeEndPoint.Item2);
+            locTriangleTwo.CalculateNewPPosition(ogBBoxPoints[2], ogBBoxPoints[3]);
+            var points = new VectorOfPointF();
+            points.Push(new PointF[] { locTriangleOne.TransformedPointPPlus, locTriangleTwo.TransformedPointPPlus });
+            return points;
+        }
+
+
         public static string ToPrintableString(this VectorOfPointF vector)
         {
             var temp = "";
@@ -2100,7 +2117,7 @@ namespace ASAP_WPF
             return temp;
         }
 
-        public static (PointF,PointF) getSizeWithMomentAndContours(this Mat matToMeasure)
+        public static (PointF,PointF) getSizeWithContoursAndBoundingBoxes(this Mat matToMeasure)
         {
             var firstPoint = PointF.Empty;
             var secondPoint = PointF.Empty;
@@ -2109,17 +2126,97 @@ namespace ASAP_WPF
             var detectedContours = matToMeasure.DetectCellContoursInMat();
             var outerCircle = CvInvoke.MinEnclosingCircle(detectedContours[0].ConvertToVectorOfPoint().ToArray());
             var innerCircle = CvInvoke.MinEnclosingCircle(detectedContours[1].ConvertToVectorOfPoint().ToArray());
+
+            var outerRectangle = CvInvoke.MinAreaRect(detectedContours[0].ConvertToVectorOfPoint().ToArray());
+            var innerRectangle = CvInvoke.MinAreaRect(detectedContours[1].ConvertToVectorOfPoint().ToArray());
             //https://www.youtube.com/watch?v=Zd68AthoNIw
             //a két kontúrnak ugyanúgy kellene állnia
-            var outerCircleCenterPoint = detectedContours[0].GetContourCenterPointF();
-            var tempMinAreaRect = CvInvoke.MinAreaRect(detectedContours[0]);
-            var isHeightLonger = tempMinAreaRect.Size.Height > tempMinAreaRect.Size.Width;
+            //var outerCircleCenterPoint = detectedContours[0].GetContourCenterPointF();
+            //var tempMinAreaRect = CvInvoke.MinAreaRect(detectedContours[0]);
+            var isHeightLonger = outerRectangle.Size.Height > outerRectangle.Size.Width;
 
             //CvInvoke.FitLine();
+            //boxpointnál a 0-3 mindig átló?
+            //The points array for storing rectangle vertices.The order is bottomLeft, topLeft, topRight, bottomRight.
 
+            var outerRectanglePoints = outerRectangle.GetVertices();
+            var outerLhsPoint = getMidPoint(outerRectanglePoints[0], outerRectanglePoints[1]);
+            var outerRhsPoint = getMidPoint(outerRectanglePoints[2], outerRectanglePoints[3]);
+            var innerRectanglePoints = innerRectangle.GetVertices();
+            var innerLhsPoint = getMidPoint(innerRectanglePoints[0], outerRectanglePoints[1]);
+            var innerRhsPoint = getMidPoint(innerRectanglePoints[2], outerRectanglePoints[3]);
+
+            //firstPoint = getMidPoint(outerLhsPoint,innerLhsPoint);
+            //secondPoint = getMidPoint(outerRhsPoint,innerRhsPoint);
+            firstPoint = innerRhsPoint;
+            secondPoint = innerLhsPoint;
+
+            return (firstPoint, secondPoint);
+        }
+
+        public static (PointF, PointF) getSizeWithContoursAndBoundingCircles(this Mat matToMeasure)
+        {
+            var firstPoint = PointF.Empty;
+            var secondPoint = PointF.Empty;
+
+            //csökkenőbe van rendezve a két kontúr
+            var detectedContours = matToMeasure.DetectCellContoursInMat();
+            var outerCircle = CvInvoke.MinEnclosingCircle(detectedContours[0].ConvertToVectorOfPoint().ToArray());
+            var innerCircle = CvInvoke.MinEnclosingCircle(detectedContours[1].ConvertToVectorOfPoint().ToArray());
+
+            var outerRectangle = CvInvoke.MinAreaRect(detectedContours[0].ConvertToVectorOfPoint().ToArray());
+            var innerRectangle = CvInvoke.MinAreaRect(detectedContours[1].ConvertToVectorOfPoint().ToArray());
+            //https://www.youtube.com/watch?v=Zd68AthoNIw
+            //a két kontúrnak ugyanúgy kellene állnia
+            //var outerCircleCenterPoint = detectedContours[0].GetContourCenterPointF();
+            //var tempMinAreaRect = CvInvoke.MinAreaRect(detectedContours[0]);
+            var isHeightLonger = outerRectangle.Size.Height > outerRectangle.Size.Width;
+
+            //CvInvoke.FitLine();
+            //boxpointnál a 0-3 mindig átló?
+            //The points array for storing rectangle vertices.The order is bottomLeft, topLeft, topRight, bottomRight.
+
+            var outerRectanglePoints = outerRectangle.GetVertices();
+            var outerLhsPoint = getMidPoint(outerRectanglePoints[0], outerRectanglePoints[1]);
+            var outerRhsPoint = getMidPoint(outerRectanglePoints[2], outerRectanglePoints[3]);
+            var innerRectanglePoints = innerRectangle.GetVertices();
+            var innerLhsPoint = getMidPoint(innerRectanglePoints[0], outerRectanglePoints[1]);
+            var innerRhsPoint = getMidPoint(innerRectanglePoints[2], outerRectanglePoints[3]);
+
+            firstPoint = getMidPoint(outerLhsPoint, innerLhsPoint);
+            secondPoint = getMidPoint(outerRhsPoint, innerRhsPoint);
+
+
+            var fittedLine = new VectorOfVectorOfPoint();
+            //CvInvoke.FitLine(retVector, fittedLine, Emgu.CV.CvEnum.DistType.L2, 0, 0.01, 0.01);
+            //var fittedLine = CvInvoke.FitLine(firstPoint, secondPoint, Emgu.CV.CvEnum.DistType.L2, 0, 0.01, 0.01);
 
 
             return (firstPoint, secondPoint);
+        }
+
+        public static VectorOfPointF GetSizeWithContoursAsVectorOfPointF(this Mat matToMeasure)
+        {
+            var tempPoints = getSizeWithContoursAndBoundingBoxes(matToMeasure);
+            var tempPointArray = new PointF[2];
+            tempPointArray[0] = tempPoints.Item1;
+            tempPointArray[1] = tempPoints.Item2;
+
+            var retVector = new VectorOfPointF();
+            retVector.Push(tempPointArray);
+            
+
+            return retVector;
+        }
+
+        public static PointF getMidPoint(this Point a, Point b)
+        {
+            return new PointF((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+        }
+
+        public static PointF getMidPoint(this PointF a, PointF b)
+        {
+            return new PointF((a.X + b.X) / 2, (a.Y + b.Y) / 2);
         }
     }
 }
