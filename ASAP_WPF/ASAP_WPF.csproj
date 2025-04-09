@@ -13,7 +13,7 @@
     <PackageReference Include="Emgu.CV.runtime.windows" Version="4.2.0.3662" />
     <PackageReference Include="System.Collections.NonGeneric" Version="4.3.0" />
     <PackageReference Include="System.Linq.Dynamic" Version="1.0.7" />
-    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.0.6.8" />
+    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0" />
     <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
   </ItemGroup>
 
